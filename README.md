@@ -1,6 +1,6 @@
 # Hadoop 小组项目
 
-Phase 0 公共底座已完成并通过本地运行验证；2—7 号模块由各成员继续实现。代码分支：common/phase0-bootstrap。
+Phase 0 公共底座已完成并通过本地运行验证；2—7 号模块由各成员继续实现。正式集成与默认分支：main；common/phase0-bootstrap 保留前期底座开发记录。
 
 ## 从这里开始
 

@@ -20,4 +20,4 @@ Windows 上 Docker 的 WSL2 后端提供 Linux 环境，容器共享其内核；
 3. Java、javac、Hadoop 版本正确，Hadoop API 编译运行通过。
 4. 基础入口不自动启动集群或格式化数据。
 
-以上已在组长电脑验证，结果见 [验证记录](phase0-status.md)。各成员仍需完成本机验收；稳定 main 与 v0.1-bootstrap 标签后续由组长确定。
+以上已在组长电脑验证，结果见 [验证记录](phase0-status.md)。各成员仍需完成本机验收；main 为正式集成分支，v0.1-bootstrap 稳定标签后续由组长确定。

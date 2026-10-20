@@ -56,7 +56,7 @@ docker info --format '{{.OSType}}'
 
 ```powershell
 Set-Location "$HOME"
-git clone --branch common/phase0-bootstrap https://github.com/deep-hang/hadoop.git
+git clone --branch main https://github.com/deep-hang/hadoop.git
 cd hadoop
 ```
 
@@ -150,7 +150,7 @@ docker info --format '{{.OSType}}'
 
 ```bash
 cd "$HOME"
-git clone --branch common/phase0-bootstrap https://github.com/deep-hang/hadoop.git
+git clone --branch main https://github.com/deep-hang/hadoop.git
 cd hadoop
 ```
 
@@ -211,7 +211,7 @@ pwd
 ## 创建任务分支（首次做一次）
 
 1. 确认已 exit 回电脑终端，且位于项目根目录。
-2. 只执行自己任务对应的一条命令：
+2. 在干净的 main 分支先执行 git pull --ff-only，再执行自己任务对应的一条命令；已下载旧分支的成员先按 [旧项目切换说明](contributing.md#已下载旧分支的成员怎样切换) 操作：
 
 | 任务 | 命令 |
 | --- | --- |
@@ -262,6 +262,6 @@ bash scripts/dev.sh shell
 | 找不到 scripts 或 .development | 回到 hadoop 项目根目录执行 |
 | Mac 挂载被拒绝 | 按 Docker 提示允许访问项目目录，再重试 |
 | M 系列出现 exec format error | 确认装的是 Apple 芯片版 Docker，保留项目 linux/amd64 设置，检查 Docker 模拟支持 |
-| 已有项目需要更新 | 在电脑终端检查 git status 和当前分支；仅当工作区干净且在 common/phase0-bootstrap 时执行 git pull --ff-only。有功能分支或本地修改时先保留，由组长协调更新 |
+| 已有项目需要更新 | 在电脑终端检查 git status 和当前分支；工作区干净且在 main 时执行 git pull --ff-only；旧分支切换和功能分支同步按 [协作规则](contributing.md#已下载旧分支的成员怎样切换) 操作，不丢弃本地修改 |
 
 仍失败时，把步骤号、完整命令与报错发给组长，排错时再提供系统和芯片信息。底座已在组长 Windows 上实测，Mac 需按第 7 步完成本机验收。
