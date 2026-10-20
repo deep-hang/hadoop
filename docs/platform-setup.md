@@ -226,14 +226,16 @@ pwd
 1. 确认已 exit 回电脑终端，且位于项目根目录。
 2. 在干净的 main 分支先执行 git pull --ff-only，再执行自己任务对应的一条命令：
 
-| 任务 | 命令 |
-| --- | --- |
-| 2 号 | `git switch -c feat/distributed` |
-| 3 号 | `git switch -c feat/hdfs` |
-| 4 号 | `git switch -c feat/yarn-mapreduce` |
-| 5 号 | `git switch -c feat/standalone-pseudo` |
-| 6 号 | `git switch -c feat/wordcount` |
-| 7 号 | `git switch -c feat/mergefile` |
+| 任务 | 创建分支的命令 | 本模块说明 |
+| --- | --- | --- |
+| 2 号 | `git switch -c feat/distributed` | [完全分布式](modules/distributed/README.md) |
+| 3 号 | `git switch -c feat/hdfs` | [HDFS](modules/hdfs/README.md) |
+| 4 号 | `git switch -c feat/yarn-mapreduce` | [YARN / MapReduce](modules/yarn-mapreduce/README.md) |
+| 5 号 | `git switch -c feat/standalone-pseudo` | [单机与伪分布式](modules/standalone-pseudo/README.md) |
+| 6 号 | `git switch -c feat/wordcount` | [WordCount](modules/wordcount/README.md) |
+| 7 号 | `git switch -c feat/mergefile` | [MergeFile](modules/mergefile/README.md) |
+
+模块说明目前是待完善的交接模板，由负责人随开发补充操作步骤、结果和材料。修改范围见 [目录与分工](project-files.md)。
 
 3. 执行 git branch --show-current，确认显示自己的 feat/... 分支，再按 [公共接口](interfaces.md) 开发。分支已存在时用 git switch 加实际分支名切换，不再加 -c。
 4. 完成并测试后，按 [提交步骤](contributing.md#pr-是什么怎么提交) 保存、推送代码，在 GitHub 创建 PR：base 选 main，compare 选自己的 feat/...，等组长审核。
