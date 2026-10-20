@@ -14,7 +14,11 @@
 | Java / Hadoop | `/opt/java/openjdk` / `/opt/hadoop` |
 | 工作目录 | `/workspace`（挂载仓库根目录） |
 
-版本选择遵循 [Apache Hadoop Java 兼容说明](https://cwiki.apache.org/confluence/spaces/HADOOP/pages/100827883/Hadoop+Java+Versions)。宿主机只需 Git、Docker Desktop（Linux 容器）及 Compose v2 或更高版本；不要求本机安装 JDK 或 Hadoop。镜像构建需要能访问 Docker Hub 和 Apache Archive，首次下载体积较大；慢速下载时可使用 [官方安装包缓存](docker/README.md)。
+版本选择遵循 [Apache Hadoop Java 兼容说明](https://cwiki.apache.org/confluence/spaces/HADOOP/pages/100827883/Hadoop+Java+Versions)。宿主机需要 Git、可用的 Linux 容器引擎与 Compose v2 或更高版本：Windows/Mac 使用 Docker Desktop，Linux 可使用 Docker Engine + Compose 插件；不要求本机安装 JDK 或 Hadoop。镜像构建需要能访问 Docker Hub 和 Apache Archive，首次下载体积较大；慢速下载时可使用 [官方安装包缓存](docker/README.md)。
+
+## 先选择自己的系统
+
+直接打开 [不同系统使用说明](docs/platform-setup.md)，选择 Windows、Intel Mac、M 系列 Mac 或 Linux。无需提前向组长登记系统，按对应步骤完成镜像获取和基础验证即可。
 
 ## 快速开始（Windows PowerShell）
 
@@ -61,4 +65,4 @@ docker compose --env-file .development -f compose/bootstrap.yaml run --rm dev ba
 
 以 [.development](.development) 和 [公共接口](docs/interfaces.md) 为开发契约；公共文件修改须由组长协调。各模块从功能分支开发，完成本地容器测试后提交 PR，组长审核后合并；禁止直接推送 main。详见 [协作规则](docs/contributing.md)。
 
-当前机器环境、已做验证、待办及老师要求中的差异记录在 [Phase 0 验证报告](docs/phase0-status.md)。Windows 前置条件见 [安装说明](docs/windows-setup.md)。
+当前机器环境、已做验证、待办及老师要求中的差异记录在 [Phase 0 验证报告](docs/phase0-status.md)。各系统安装、镜像导入、构建和报错处理见 [不同系统使用说明](docs/platform-setup.md)。

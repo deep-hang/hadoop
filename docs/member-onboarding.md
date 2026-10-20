@@ -2,9 +2,9 @@
 
 先让每个人跑通同一底座，再逐层接入模块。当前完成的是公共环境；三节点集群、运行模式和两个应用尚未实现。底座通过不等于全部模块已经能拼起来。
 
-## 第一步：登记电脑，验收底座
+## 第一步：按自己的系统验收底座
 
-每人先回复组长：姓名、任务号、系统（Windows/macOS/Linux）、处理器（Intel/AMD/Apple M 系列/其他），以及下面验证命令的最后输出。系统暂不清楚时先查询再登记，不自行换 Java/Hadoop 版本。
+直接按 [不同系统使用说明](platform-setup.md) 选择 Windows、Intel Mac、Apple 芯片 Mac 或 Linux 的步骤。不需要提前向组长报告系统或处理器；每人在自己的电脑验证通过后即可开始本模块开发，公共 Java/Hadoop 版本按仓库约定使用。
 
 当前镜像固定 `linux/amd64`。Windows 需 Docker Desktop 的 Linux 容器及可用虚拟化组件；Intel/AMD 电脑与该架构匹配。Apple M 系列等 ARM 电脑需要模拟运行，速度可能较慢，必须实机验证。Docker Desktop 提供模拟支持，但这不能替代组员机器上的验收，见 [Docker 架构与模拟说明](https://docs.docker.com/build/building/multi-platform/)。目前实测环境为组长的 Windows 11 / Intel 电脑。
 

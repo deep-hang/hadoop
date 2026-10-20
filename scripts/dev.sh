@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 action="${1:-doctor}"
 case "$action" in doctor|config|build|verify|shell) ;; *) echo 'Usage: bash scripts/dev.sh {doctor|config|build|verify|shell}' >&2; exit 2;; esac
-command -v docker >/dev/null || { echo 'Docker is missing; see docs/windows-setup.md.' >&2; exit 1; }
+command -v docker >/dev/null || { echo 'Docker is missing; see docs/platform-setup.md.' >&2; exit 1; }
 docker compose version
 compose=(docker compose --env-file .development -f compose/bootstrap.yaml)
 if [[ "$action" == config ]]; then
