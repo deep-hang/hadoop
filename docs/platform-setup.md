@@ -237,7 +237,7 @@ pwd
 点击“本模块说明”查看自己的任务、修改目录、开发顺序和验收方法；其中标注“实现后运行”的命令，须先完成对应功能。修改范围见 [目录与分工](project-files.md)。
 
 3. 执行 git branch --show-current，确认显示自己的 feat/... 分支，再按 [公共接口](interfaces.md) 开发。分支已存在时用 git switch 加实际分支名切换，不再加 -c。
-4. 完成并测试后，按 [提交步骤](contributing.md#pr-是什么怎么提交) 保存、推送代码，在 GitHub 创建 PR：base 选 main，compare 选自己的 feat/...，等组长审核。
+4. 完成并测试后，按自己模块说明中的“测试成功后，怎样交给组长”操作：检查个人分支 → git add → git commit → git push → 创建 PR（base 为 main）→ 组长审核并合并。每份指南都有对应任务的完整命令，点击上表链接即可查看。
 
 <a id="daily"></a>
 ## 以后每天怎么开始
@@ -260,7 +260,7 @@ bash scripts/dev.sh shell
 ```
 
 3. 在电脑编辑器里修改项目文件，在容器的 /workspace 编译和测试本模块。
-4. 结束时在容器输入 exit；回电脑终端按 [协作规则](contributing.md) 提交代码。无需重复下载或导入镜像。
+4. 结束时在容器输入 exit；回电脑终端，按 [自己的任务指南](modules/README.md) 中的提交步骤保存、推送并申请合并。无需重复下载或导入镜像。
 
 当前开发容器不启动三节点集群；模块连接与交接看 [联调说明](member-onboarding.md)。
 
