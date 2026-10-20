@@ -4,6 +4,8 @@
 
 ## 第一步：按自己的系统验收底座
 
+公共镜像可直接从 [GitHub 下载](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz)，按系统说明第 6 步导入。
+
 1. 打开 [不同系统使用说明](platform-setup.md)，只选择自己的系统，依次完成第 1—8 步，不跳过镜像获取就直接验证。
 2. 确认 verify 输出 BASE_API_PASS 和 PASS: frozen Java/Hadoop versions, paths, compiler and Hadoop API loading。每位成员都在自己电脑取得此结果。
 3. 进入容器确认 /workspace、Java 和 Hadoop 版本，再 exit 回电脑终端。

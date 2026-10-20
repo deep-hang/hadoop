@@ -20,6 +20,12 @@
 
 直接打开 [不同系统使用说明](docs/platform-setup.md)，选择 Windows、Intel Mac、M 系列 Mac 或 Linux。无需提前向组长登记系统，按对应步骤完成镜像获取和基础验证即可。
 
+## 镜像下载
+
+[下载公共开发镜像 hadoop-base-v0.1.tar.gz（约 829 MB）](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz) · [GitHub 发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1)
+
+首次使用按下面的系统说明下载、导入并验证。镜像是 Release 附件，不包含成员代码；下载时选择 hadoop-base-v0.1.tar.gz，不选择 Source code。本次为公共镜像预发布，不代表整个实验项目已完成。
+
 ## 第一次使用：按顺序完成
 
 1. 打开 [不同系统使用说明](docs/platform-setup.md)，选自己的系统，依次完成第 1—8 步，每步都有操作位置、命令和成功结果。

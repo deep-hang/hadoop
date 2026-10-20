@@ -41,3 +41,10 @@ Docker Desktop 4.96.0 已通过官方安装包按当前用户模式安装，验�
 - Windows、Intel Mac、Apple 芯片 Mac、Linux 分别提供第 1—8 步，写明执行位置、完整命令与成功结果，不再跨系统参照命令。
 - 补充镜像导入/构建二选一、任务分支、每日操作、已有仓库与报错处理；README 和成员接入统一入口。
 - 仅修改文档，不改变公共环境与接口；Mac/Linux 宿主机仍需成员实机验收。
+
+## 公共镜像 GitHub 分发
+
+- 按用户要求通过 GitHub Release 附件分发 hadoop-base-v0.1.tar.gz，不把大型二进制加入 Git 历史。
+- 使用 phase0-image-v0.1 预发布标记，只分发已验证的公共开发镜像，不创建 main 或 v0.1-bootstrap 稳定标签。
+- README、各系统第 6 步和成员接入说明增加直接下载链接、Assets 文件选择与导入顺序。下载地址：https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz
+- 上传完成后核对 GitHub 附件状态、字节数和服务端摘要，并验证公开下载入口；运行环境与接口不变。

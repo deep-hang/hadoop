@@ -85,7 +85,11 @@ $LASTEXITCODE
 
 ### 第 6 步：获取统一镜像（A、B 只选一种）
 
-**A：已经拿到组长分享的镜像包。** 把 hadoop-base-v0.1.tar.gz 保存到当前账户的 Downloads（下载）文件夹，不解压。在电脑终端执行：
+**A：从 GitHub 下载已验证镜像（推荐）。**
+
+1. 点击 [下载 hadoop-base-v0.1.tar.gz](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz)，将文件保存到当前账户的 Downloads（下载）文件夹。文件约 829 MB，等待浏览器显示下载完成，不要解压。
+2. 如直链不便使用，打开 [镜像发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1)，展开 Assets，点击 hadoop-base-v0.1.tar.gz；Source code 是源码压缩包，不能代替镜像。
+3. 保持在电脑终端，执行下面的导入命令：
 
 ```powershell
 docker load --input "$HOME\Downloads\hadoop-base-v0.1.tar.gz"
@@ -105,7 +109,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 build
 $LASTEXITCODE
 ```
 
-结果为 0 才继续；失败时按 [镜像与缓存说明](../docker/README.md) 处理后重试。镜像包不在 Git 仓库里，克隆代码不等于获得镜像。
+结果为 0 才继续；失败时按 [镜像与缓存说明](../docker/README.md) 处理后重试。镜像包作为 GitHub Release 附件提供，不在 Git 源码历史里；克隆代码不等于下载镜像。
 
 A 或 B 完成后，都执行以下命令检查镜像存在：
 
@@ -226,7 +230,11 @@ echo $?
 
 ### 第 6 步：获取统一镜像（A、B 只选一种）
 
-**A：已经拿到组长分享的镜像包。** 把 hadoop-base-v0.1.tar.gz 保存到当前账户的 Downloads（下载）文件夹，不解压。在电脑终端执行：
+**A：从 GitHub 下载已验证镜像（推荐）。**
+
+1. 点击 [下载 hadoop-base-v0.1.tar.gz](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz)，将文件保存到当前账户的 Downloads（下载）文件夹。文件约 829 MB，等待浏览器显示下载完成，不要解压。
+2. 如直链不便使用，打开 [镜像发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1)，展开 Assets，点击 hadoop-base-v0.1.tar.gz；Source code 是源码压缩包，不能代替镜像。
+3. 保持在电脑终端，执行下面的导入命令：
 
 ```bash
 docker load --input "$HOME/Downloads/hadoop-base-v0.1.tar.gz"
@@ -246,7 +254,7 @@ bash scripts/dev.sh build
 echo $?
 ```
 
-结果为 0 才继续；失败时按 [镜像与缓存说明](../docker/README.md) 处理后重试。镜像包不在 Git 仓库里，克隆代码不等于获得镜像。
+结果为 0 才继续；失败时按 [镜像与缓存说明](../docker/README.md) 处理后重试。镜像包作为 GitHub Release 附件提供，不在 Git 源码历史里；克隆代码不等于下载镜像。
 
 A 或 B 完成后，都执行以下命令检查镜像存在：
 
@@ -369,7 +377,11 @@ echo $?
 
 ### 第 6 步：获取统一镜像（A、B 只选一种）
 
-**A：已经拿到组长分享的镜像包。** 把 hadoop-base-v0.1.tar.gz 保存到当前账户的 Downloads（下载）文件夹，不解压。在电脑终端执行：
+**A：从 GitHub 下载已验证镜像（推荐）。**
+
+1. 点击 [下载 hadoop-base-v0.1.tar.gz](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz)，将文件保存到当前账户的 Downloads（下载）文件夹。文件约 829 MB，等待浏览器显示下载完成，不要解压。
+2. 如直链不便使用，打开 [镜像发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1)，展开 Assets，点击 hadoop-base-v0.1.tar.gz；Source code 是源码压缩包，不能代替镜像。
+3. 保持在电脑终端，执行下面的导入命令：
 
 ```bash
 docker load --input "$HOME/Downloads/hadoop-base-v0.1.tar.gz"
@@ -389,7 +401,7 @@ bash scripts/dev.sh build
 echo $?
 ```
 
-结果为 0 才继续；失败时按 [镜像与缓存说明](../docker/README.md) 处理后重试。镜像包不在 Git 仓库里，克隆代码不等于获得镜像。
+结果为 0 才继续；失败时按 [镜像与缓存说明](../docker/README.md) 处理后重试。镜像包作为 GitHub Release 附件提供，不在 Git 源码历史里；克隆代码不等于下载镜像。
 
 A 或 B 完成后，都执行以下命令检查镜像存在：
 
@@ -518,7 +530,11 @@ echo $?
 
 ### 第 6 步：获取统一镜像（A、B 只选一种）
 
-**A：已经拿到组长分享的镜像包。** 把 hadoop-base-v0.1.tar.gz 保存到当前账户的 Downloads（下载）文件夹，不解压。在电脑终端执行：
+**A：从 GitHub 下载已验证镜像（推荐）。**
+
+1. 点击 [下载 hadoop-base-v0.1.tar.gz](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz)，将文件保存到当前账户的 Downloads（下载）文件夹。文件约 829 MB，等待浏览器显示下载完成，不要解压。
+2. 如直链不便使用，打开 [镜像发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1)，展开 Assets，点击 hadoop-base-v0.1.tar.gz；Source code 是源码压缩包，不能代替镜像。
+3. 保持在电脑终端，执行下面的导入命令：
 
 ```bash
 docker load --input "$HOME/Downloads/hadoop-base-v0.1.tar.gz"
@@ -538,7 +554,7 @@ bash scripts/dev.sh build
 echo $?
 ```
 
-结果为 0 才继续；失败时按 [镜像与缓存说明](../docker/README.md) 处理后重试。镜像包不在 Git 仓库里，克隆代码不等于获得镜像。
+结果为 0 才继续；失败时按 [镜像与缓存说明](../docker/README.md) 处理后重试。镜像包作为 GitHub Release 附件提供，不在 Git 源码历史里；克隆代码不等于下载镜像。
 
 A 或 B 完成后，都执行以下命令检查镜像存在：
 

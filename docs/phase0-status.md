@@ -57,11 +57,13 @@ PASS: frozen Java/Hadoop versions, paths, compiler and Hadoop API loading
 
 新增 `member-onboarding.md`，明确按系统自行接入、共享镜像导入、各模块分支来源和逐层联调门槛。尤其明确基础 dev 容器不自动加入未来集群；应用的提交容器、网络和配置挂载须由 2、3、4 号交付并验收。
 
-成员接入复验时本地镜像 ID 为 `sha256:6d9579105c8651df68fc3fbd5c3addea8706d610a8a005bd85ac734fb8551583`，工具版本与契约一致。已从该镜像导出独立交付文件 `hadoop-base-v0.1.tar.gz`（约 829 MB，不在 Git 仓库内），并用 Docker 实际重新导入成功，导入前后镜像 ID 一致，供组长分享给成员。每位成员仍须在自己的机器上导入镜像并运行验证。
+成员接入复验时本地镜像 ID 为 `sha256:6d9579105c8651df68fc3fbd5c3addea8706d610a8a005bd85ac734fb8551583`，工具版本与契约一致。已从该镜像导出独立交付文件 `hadoop-base-v0.1.tar.gz`（约 829 MB，不在 Git 仓库内），并用 Docker 实际重新导入成功，导入前后镜像 ID 一致，现通过 [GitHub Release](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1) 提供成员下载（镜像分发预发布）。每位成员仍须在自己的机器上导入镜像并运行验证。
+
+GitHub 附件上传验证：文件大小 828,594,929 字节；上传数据与 GitHub 服务端 SHA256 一致（0a1f1e6b5148c2d74811fab39b4667c4ead199930052ac28dd99a40eb3700453）。无需登录的下载请求返回 HTTP 206，文件头为 gzip。该校验对象是压缩镜像包，与 Docker 镜像 ID 不同。
 
 ## 下一步
 
-1. 组长审阅已发布分支中的公共契约及验证结果，再确定 main 与 `v0.1-bootstrap` 稳定标签；本次仅发布工作分支。
+1. 组长审阅已发布分支中的公共契约及验证结果，再确定 main 与 `v0.1-bootstrap` 稳定标签；公共底座仍以工作分支开发；镜像分发预发布不替代正式稳定发布。
 2. 向成员交接相同源码版本与基础镜像。可分别构建，或由组长导出同一份已验证镜像供成员导入；不能只传本机路径。
 3. 后续修改公共环境后重新运行 doctor、build、verify，并更新变更说明；当前 `.development` 已标为 `runtime-verified`。
 4. 固定镜像后交接：2 号做三节点骨架，3/4 号分别接入 HDFS/YARN，5 号开展两种模式，6/7 号可先做应用自身代码及测试数据。
