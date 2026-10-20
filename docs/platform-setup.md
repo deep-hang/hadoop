@@ -4,7 +4,7 @@
 
 不清楚目录和文件用途时，先看 [项目文件说明](project-files.md)。
 
-[分支用途](#branches) · [Windows](#windows) · [Mac](#mac) · [任务分支](#task-branch) · [每天使用](#daily)
+[分支用途](#branches) · [Windows](#windows) · [Mac](#mac) · [任务分支](#task-branch) · [每天使用](#daily) · [提交与合并](#submit)
 
 <a id="branches"></a>
 ## 分支怎么用
@@ -237,7 +237,7 @@ pwd
 点击“本模块说明”查看自己的任务、修改目录、开发顺序和验收方法；其中标注“实现后运行”的命令，须先完成对应功能。修改范围见 [目录与分工](project-files.md)。
 
 3. 执行 git branch --show-current，确认显示自己的 feat/... 分支，再按 [公共接口](interfaces.md) 开发。分支已存在时用 git switch 加实际分支名切换，不再加 -c。
-4. 完成并测试后，按自己模块说明中的“测试成功后，怎样交给组长”操作：检查个人分支 → git add → git commit → git push → 创建 PR（base 为 main）→ 组长审核并合并。每份指南都有对应任务的完整命令，点击上表链接即可查看。
+4. 完成并测试后，按下方 [提交与合并](#submit) 操作，将个人分支交给组长审核。
 
 <a id="daily"></a>
 ## 以后每天怎么开始
@@ -260,9 +260,83 @@ bash scripts/dev.sh shell
 ```
 
 3. 在电脑编辑器里修改项目文件，在容器的 /workspace 编译和测试本模块。
-4. 结束时在容器输入 exit；回电脑终端，按 [自己的任务指南](modules/README.md) 中的提交步骤保存、推送并申请合并。无需重复下载或导入镜像。
+4. 结束时在容器输入 exit；回电脑终端，按下方 [提交与合并](#submit) 保存、推送并申请合并。无需重复下载或导入镜像。
 
 当前开发容器不启动三节点集群；模块连接与交接看 [联调说明](member-onboarding.md)。
+
+
+<a id="submit"></a>
+## 测试成功后，怎样提交到 main
+
+流程：**个人分支测试 → 保存提交 → 推送到 GitHub → 提交 PR → 组长审核合并**。测试成功不会自动进入 main。
+
+### 1. 回到电脑终端，检查分支
+
+容器内先输入 exit，再在电脑终端的项目根目录执行（Windows/Mac 相同）：
+
+~~~text
+git branch --show-current
+git status
+~~~
+
+应显示自己的 feat/... 分支。显示 main 时，先用 git switch 加自己的分支名切回；分支已存在时不再加 -c。
+
+### 2. 选择本次提交的文件
+
+只执行自己任务对应的一条命令：
+
+| 任务 | 加入本次提交 |
+| --- | --- |
+| 2 号 | git add compose/distributed.yaml compose/README.md tests/distributed/ docs/modules/distributed/ |
+| 3 号 | git add config/hdfs/ tests/hdfs/ docs/modules/hdfs/ |
+| 4 号 | git add config/yarn/ tests/yarn-mapreduce/ docs/modules/yarn-mapreduce/ |
+| 5 号 | git add modes/standalone/ modes/pseudo/ tests/standalone/ tests/pseudo/ docs/modules/standalone-pseudo/ |
+| 6 号 | git add apps/wordcount/ tests/wordcount/ docs/modules/wordcount/ |
+| 7 号 | git add apps/mergefile/ tests/mergefile/ docs/modules/mergefile/ |
+
+路径须已创建；尚未创建的文件先从命令中去掉。然后执行：
+
+~~~text
+git diff --cached --stat
+~~~
+
+确认清单只有本次要交的文件，没有他人改动、日志或编译产物，再继续。
+
+### 3. 保存提交并推送个人分支
+
+下面提交说明是 6 号示例，请换成自己的模块和实际完成内容：
+
+~~~text
+git commit -m "feat(wordcount): complete implementation and validation"
+git push -u origin HEAD
+~~~
+
+commit 将改动保存到本地 Git；push 将**当前个人分支**上传 GitHub。首次推送后 GitHub 才会显示该分支，后续也可继续用此命令。
+
+首次 commit 提示缺少身份时，用 git config user.name 和 git config user.email 设置本仓库姓名、邮箱再重试。push 报权限错误时，确认已接受组长邀请、登录的是自己的 GitHub 账号。
+
+### 4. 在 GitHub 申请合并（PR）
+
+1. 打开 [仓库 Pull requests](https://github.com/deep-hang/hadoop/pulls)，点击 New pull request。
+2. **base 选 main，compare 选自己的 feat/...**，核对文件范围。
+3. 点击 Create pull request，写清改了什么、怎样运行、测试结果和未完成项。尚未测试通过的工作使用 Draft，暂不申请合并。
+
+### 5. 组长审核后，才进入 main
+
+组长检查改动并复验，通过后批准，再点击 Merge pull request。**组员不直接推送 main，也不自行合并 PR。**
+
+收到修改意见时，继续在原 feat/... 分支修改、复测，再重复第 2—3 步；原 PR 自动更新，无需另建 PR。
+
+### 6. 获取全组最新代码
+
+在自己的功能分支先提交保存修改，确认 git status 干净，再执行：
+
+~~~text
+git fetch origin
+git merge origin/main
+~~~
+
+发生冲突时联系相关负责人解决；重新测试后执行 git push。自己的代码已合入 main 时，合并 origin/main 后即可看到该结果，后续仍可继续使用原功能分支。
 
 <a id="existing"></a>
 <a id="troubleshooting"></a>
