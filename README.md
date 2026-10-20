@@ -1,59 +1,42 @@
 # Hadoop 小组项目
 
-组长 Phase 0 公共底座。统一开发镜像、工作目录、公共接口及校验入口已完成，**容器构建和基础运行验证通过**。已发布至 GitHub 的 `common/phase0-bootstrap` 独立分支；正式发布 `v0.1-bootstrap` 稳定标签前由组长审阅。
+Phase 0 公共底座已完成并通过本地运行验证；2—7 号模块由各成员继续实现。代码分支：common/phase0-bootstrap。
+
+## 从这里开始
+
+1. 按 [Windows / Mac 使用说明](docs/platform-setup.md)第 1—8 步下载代码、导入镜像并验证。
+2. 创建自己的任务分支，按 [公共接口](docs/interfaces.md) 开发。
+3. 完成模块测试，按 [联调说明](docs/member-onboarding.md) 交接。
+
+[下载镜像包（约 829 MB）](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz) · [镜像发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1)
 
 ## 统一环境
 
 | 项目 | 固定值 |
 | --- | --- |
-| Linux | Ubuntu 22.04 Jammy（基础镜像使用 SHA256 digest 锁定） |
-| JDK | Eclipse Temurin 8u442-b06，`java` 版本 `1.8.0_442` |
-| Hadoop | Apache Hadoop 3.3.6（下载包使用官方 SHA512 校验） |
-| 项目镜像 | `hadoop-base:v0.1`，本地已构建并验证 |
-| 容器平台 | `linux/amd64` |
-| Java / Hadoop | `/opt/java/openjdk` / `/opt/hadoop` |
-| 工作目录 | `/workspace`（挂载仓库根目录） |
+| 系统 / 平台 | Ubuntu 22.04 / linux/amd64 |
+| JDK | Temurin 8u442-b06（1.8.0_442） |
+| Hadoop | 3.3.6 |
+| 镜像 | hadoop-base:v0.1 |
+| Java / Hadoop 目录 | /opt/java/openjdk / /opt/hadoop |
+| 工作目录 | /workspace，挂载电脑上的项目根目录 |
 
-版本选择遵循 [Apache Hadoop Java 兼容说明](https://cwiki.apache.org/confluence/spaces/HADOOP/pages/100827883/Hadoop+Java+Versions)。宿主机需要 Git、可用的 Linux 容器引擎与 Compose v2 或更高版本：Windows/Mac 使用 Docker Desktop，Linux 可使用 Docker Engine + Compose 插件；不要求本机安装 JDK 或 Hadoop。镜像构建需要能访问 Docker Hub 和 Apache Archive，首次下载体积较大；慢速下载时可使用 [官方安装包缓存](docker/README.md)。
-
-## 先选择自己的系统
-
-直接打开 [不同系统使用说明](docs/platform-setup.md)，选择 Windows、Intel Mac、M 系列 Mac 或 Linux。无需提前向组长登记系统，按对应步骤完成镜像获取和基础验证即可。
-
-## 镜像下载
-
-[下载公共开发镜像 hadoop-base-v0.1.tar.gz（约 829 MB）](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz) · [GitHub 发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1)
-
-首次使用按下面的系统说明下载、导入并验证。镜像是 Release 附件，不包含成员代码；下载时选择 hadoop-base-v0.1.tar.gz，不选择 Source code。本次为公共镜像预发布，不代表整个实验项目已完成。
-
-## 第一次使用：按顺序完成
-
-1. 打开 [不同系统使用说明](docs/platform-setup.md)，选自己的系统，依次完成第 1—8 步，每步都有操作位置、命令和成功结果。
-2. 镜像导入或构建后验证，看到 BASE_API_PASS 和 PASS: frozen Java/Hadoop versions, paths, compiler and Hadoop API loading。
-3. 进入容器确认工作目录和版本，再退出。
-4. 在电脑终端 [创建自己的任务分支](docs/platform-setup.md#task-branch)，按 [联调验收](docs/member-onboarding.md) 开发与交付。
-
-以后按 [每天操作顺序](docs/platform-setup.md#daily) 使用，不必重复安装或构建。Windows 的 Bypass 参数仅作用于此次脚本进程，不修改永久执行策略。
-
-基础验证通过代表开发环境可用；dev 为一次性开发容器，不启动 Hadoop 守护进程、不格式化文件系统、不映射集群端口。集群与应用由对应成员实现。
+版本、路径和节点约定以 [.development](.development) 为准。当前 dev 容器只供开发，不启动 HDFS/YARN 集群。
 
 ## 目录与负责人
 
 | 目录 / 文件 | 内容 | 负责人 |
 | --- | --- | --- |
-| `docker/` | 冻结基础镜像、公共入口 | 1 号 |
-| `compose/bootstrap.yaml` | 基础镜像构建与开发入口 | 1 号 |
-| `compose/` 后续集群文件 | master / worker1 / worker2 网络、卷、启动编排 | 2 号 |
-| `config/common/`、`.development`、`scripts/` | 公共环境与接口 | 1 号 |
-| `config/hdfs/` | HDFS 配置 | 3 号 |
-| `config/yarn/` | YARN、MapReduce 配置 | 4 号 |
-| `modes/standalone/`、`modes/pseudo/` | 单机与伪分布式模式 | 5 号 |
-| `apps/wordcount/` | WordCount 完整闭环 | 6 号 |
-| `apps/mergefile/` | MergeFile 完整闭环 | 7 号 |
-| `tests/`、`docs/` | 各模块验证与说明 | 对应模块负责人 |
+| docker/、config/common/、scripts/、.development | 基础镜像、公共配置与工具 | 1 号 |
+| compose/bootstrap.yaml | 开发容器 | 1 号 |
+| compose/ 后续集群文件 | 三节点网络、卷和启动 | 2 号 |
+| config/hdfs/ | HDFS 配置 | 3 号 |
+| config/yarn/ | YARN / MapReduce 配置 | 4 号 |
+| modes/standalone/、modes/pseudo/ | 单机、伪分布式 | 5 号 |
+| apps/wordcount/ | WordCount | 6 号 |
+| apps/mergefile/ | MergeFile | 7 号 |
+| tests/、docs/ | 本模块测试及说明 | 对应负责人 |
 
-## 协作与交付
+[协作规则](docs/contributing.md) · [验证记录](docs/phase0-status.md) · [课程验收要求](docs/requirements.md)
 
-以 [.development](.development) 和 [公共接口](docs/interfaces.md) 为开发契约；公共文件修改须由组长协调。各模块从功能分支开发，完成本地容器测试后提交 PR，组长审核后合并；禁止直接推送 main。详见 [协作规则](docs/contributing.md)。
-
-当前机器环境、已做验证、待办及老师要求中的差异记录在 [Phase 0 验证报告](docs/phase0-status.md)。各系统安装、镜像导入、构建和报错处理见 [不同系统使用说明](docs/platform-setup.md)。
+组长维护镜像时使用 [构建说明](docker/README.md)，组员直接下载导入即可。
