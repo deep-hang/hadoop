@@ -1,0 +1,18 @@
+name: hadoop-bootstrap
+services:
+  dev:
+    image: ${BASE_IMAGE_NAME:?Use --env-file .development}:${BASE_IMAGE_TAG:?Use --env-file .development}
+    platform: linux/amd64
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    env_file:
+      - ../.development
+    working_dir: /workspace
+    volumes:
+      - type: bind
+        source: ..
+        target: /workspace
+    stdin_open: true
+    tty: true
+    command: ["bash"]

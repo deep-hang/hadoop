@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Deliberately no HDFS endpoint here: the base image starts no cluster. -->
+<configuration>
+</configuration>
