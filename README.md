@@ -31,7 +31,7 @@ Phase 0 公共底座已完成并通过本地运行验证；2—7 号模块由各
 | --- | --- | --- |
 | docker/、config/common/、scripts/、.development | 基础镜像、公共配置与工具 | 1 号 |
 | compose/bootstrap.yaml | 开发容器 | 1 号 |
-| compose/ 后续集群文件 | 三节点网络、卷和启动 | 2 号 |
+| compose/ 后续集群文件 | 完全分布式三节点网络、卷和启动 | 2 号 |
 | config/hdfs/ | HDFS 配置 | 3 号 |
 | config/yarn/ | YARN / MapReduce 配置 | 4 号 |
 | modes/standalone/、modes/pseudo/ | 单机、伪分布式 | 5 号 |

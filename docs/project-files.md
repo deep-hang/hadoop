@@ -11,7 +11,7 @@
 | [README.md](../README.md) | 项目首页：入口链接、统一版本、目录与负责人 | 所有人阅读 |
 | [.changes/](../.changes/) | 公共变更记录：改了什么、影响谁、怎么验证和回退 | 公共文件修改者 |
 | [apps/](../apps/) | 两个应用的代码和测试输入 | 6、7 号 |
-| [compose/](../compose/) | 定义容器、网络、挂载目录与启动方式 | bootstrap 由 1 号维护；集群文件由 2 号开发 |
+| [compose/](../compose/) | 开发容器，以及完全分布式三节点集群的网络、挂载和启动 | bootstrap 开发容器由 1 号维护；完全分布式编排由 2 号开发 |
 | [config/](../config/) | Hadoop 的公共配置、HDFS 与 YARN 配置 | 1、3、4 号分工 |
 | [docker/](../docker/) | 统一 Java/Hadoop 环境的构建配方和启动入口 | 1 号 |
 | [docs/](../docs/) | 使用说明、接口、协作和验收文档 | 对应内容负责人 |
@@ -47,7 +47,15 @@
 | [config/yarn/](../config/yarn/) | 4 号补充 YARN / MapReduce 服务配置，当前只有说明 |
 | [compose/bootstrap.yaml](../compose/bootstrap.yaml) | 定义 dev 开发容器：使用统一镜像，把电脑项目目录挂到 /workspace；不启动集群 |
 
-2 号后续在 compose/ 新建集群文件，连接 master、worker1、worker2。3、4 号的配置需一起接入，才能运行 HDFS/YARN。
+**完全分布式放在哪里？** 它由以下部分共同组成，不单独放在 modes/：
+
+| 位置 | 完全分布式中的作用 | 负责人 |
+| --- | --- | --- |
+| compose/ 后续集群文件（建议 distributed.yaml） | 创建 master、worker1、worker2 三个容器，连接网络、数据卷与启动命令 | 2 号 |
+| config/hdfs/ | 配置 NameNode、两个 DataNode 与文件存储 | 3 号 |
+| config/yarn/ | 配置 ResourceManager、两个 NodeManager 与 MapReduce 计算 | 4 号 |
+
+三部分接入同一编排后，才是可运行的完全分布式集群。当前集群文件及服务配置尚未实现；bootstrap.yaml 只有开发容器。modes/ 只放 5 号负责的单机、伪分布式，6、7 号应用后续接入完全分布式集群验证。
 
 .development 中的 HDFS 地址、服务名和端口是后续模块共同遵守的约定，写在文件里不代表服务已经运行。config/common/ 在构建镜像时复制进去，修改电脑上的配置不会自动改动已有镜像。
 
