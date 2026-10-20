@@ -10,6 +10,8 @@ Phase 0 公共底座已完成并通过本地运行验证；2—7 号模块由各
 
 [下载镜像包（约 829 MB）](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz) · [镜像发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1)
 
+[项目文件说明](docs/project-files.md)：每个目录和文件是什么、里面有什么、谁负责修改。
+
 ## 统一环境
 
 | 项目 | 固定值 |

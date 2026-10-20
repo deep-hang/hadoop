@@ -2,6 +2,8 @@
 
 只做自己系统的第 1—8 步，再创建任务分支。一次执行一个代码框，报错先停下处理。电脑无需另装 Java 或 Hadoop。
 
+不清楚目录和文件用途时，先看 [项目文件说明](project-files.md)。
+
 [Windows](#windows) · [Mac](#mac) · [任务分支](#task-branch) · [每天使用](#daily)
 
 ## 这 8 步在做什么

@@ -18,3 +18,7 @@
 ## 影响与回滚
 
 公共底座影响全组环境；源码在 common/phase0-bootstrap，未修改 main。后续回退用修复分支中的 git revert，不重写历史；宿主机 WSL/Docker 安装不会随 Git 回退。
+
+## 项目文件导览
+
+新增 docs/project-files.md，按目录解释实际文件内容、用途和修改归属；README 与使用说明增加入口。仅补充文档，公共接口和运行行为不变。
