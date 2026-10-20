@@ -4,7 +4,20 @@
 
 不清楚目录和文件用途时，先看 [项目文件说明](project-files.md)。
 
-[Windows](#windows) · [Mac](#mac) · [任务分支](#task-branch) · [每天使用](#daily)
+[分支用途](#branches) · [Windows](#windows) · [Mac](#mac) · [任务分支](#task-branch) · [每天使用](#daily)
+
+<a id="branches"></a>
+## 先看懂三个分支
+
+| 分支名称 | 做什么 | 怎么用 |
+| --- | --- | --- |
+| main | 汇总审核通过的正式代码，最终完整项目放这里 | 下载项目、获取全组最新代码；成员通过 PR 合入 |
+| feat/... | 每个人开发、修改和测试自己的模块 | 按下方任务号创建，只提交自己的文件 |
+| common/phase0-bootstrap | 保留前期公共底座记录 | 日常开发无需切到这里 |
+
+**分支是代码版本的名称，不是项目文件夹。** GitHub 文件列表上方的分支下拉框可以切换分支。main 当前包含公共底座，完整项目需等各模块审核合入。
+
+协作顺序：**个人分支开发 → 测试 → 推送 → 提交 PR → 组长审核 → 合入 main**。PR 就是申请将个人分支的改动合入 main。
 
 ## 这 8 步在做什么
 
@@ -223,6 +236,7 @@ pwd
 | 7 号 | `git switch -c feat/mergefile` |
 
 3. 执行 git branch --show-current，确认显示自己的 feat/... 分支，再按 [公共接口](interfaces.md) 开发。分支已存在时用 git switch 加实际分支名切换，不再加 -c。
+4. 完成并测试后，按 [提交步骤](contributing.md#pr-是什么怎么提交) 保存、推送代码，在 GitHub 创建 PR：base 选 main，compare 选自己的 feat/...，等组长审核。
 
 <a id="daily"></a>
 ## 以后每天怎么开始
