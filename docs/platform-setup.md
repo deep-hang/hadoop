@@ -234,7 +234,7 @@ pwd
 | 6 号 | `git switch -c feat/wordcount` | [WordCount](modules/wordcount/README.md) |
 | 7 号 | `git switch -c feat/mergefile` | [MergeFile](modules/mergefile/README.md) |
 
-模块说明目前是待完善的交接模板，由负责人随开发补充操作步骤、结果和材料。修改范围见 [目录与分工](project-files.md)。
+点击“本模块说明”查看自己的任务、修改目录、开发顺序和验收方法；其中标注“实现后运行”的命令，须先完成对应功能。修改范围见 [目录与分工](project-files.md)。
 
 3. 执行 git branch --show-current，确认显示自己的 feat/... 分支，再按 [公共接口](interfaces.md) 开发。分支已存在时用 git switch 加实际分支名切换，不再加 -c。
 4. 完成并测试后，按 [提交步骤](contributing.md#pr-是什么怎么提交) 保存、推送代码，在 GitHub 创建 PR：base 选 main，compare 选自己的 feat/...，等组长审核。
