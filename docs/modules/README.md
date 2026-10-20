@@ -4,6 +4,7 @@
 
 | 目录 | 负责人 | 内容 |
 | --- | --- | --- |
+| [组长验收清单](../final-acceptance.md) | 1 号 | 安装配置讲解、进度、最终联调及材料汇总 |
 | [distributed/](distributed/) | 2 号 | 完全分布式编排任务与操作步骤、验收要求及实验材料 |
 | [hdfs/](hdfs/) | 3 号 | HDFS任务与操作步骤、验收要求及实验材料 |
 | [yarn-mapreduce/](yarn-mapreduce/) | 4 号 | YARN / MapReduce任务与操作步骤、验收要求及实验材料 |

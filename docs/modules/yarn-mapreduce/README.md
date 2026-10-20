@@ -21,6 +21,8 @@
 6. 多个输入文件产生多个输入分片，核对实际任务数和容器所在节点。只看到两个 NodeManager 在线，不代表两个 worker 都算过任务。
 7. 保存 application ID、成功状态、结果、两个节点的任务证据，通知 6、7 号可开始真实集群联调。将检查整理到自己的 tests/ 目录。
 
+若配置与 2 号编排互相等待，先提交配套 Draft PR，按 [联合验证流程](../../member-onboarding.md#joint-check) 共同测试，再审核合入。
+
 ## 4. 怎样验证
 
 **前提：2 号正式集群已接入 3、4 号配置且服务就绪。** 按 [2 号说明](../distributed/README.md) 进入 master，以下均在 master 内执行：

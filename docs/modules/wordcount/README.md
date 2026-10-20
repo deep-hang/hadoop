@@ -51,7 +51,9 @@ bash /workspace/apps/wordcount/verify.sh /project/output/wordcount/run-001
 hdfs dfs -cat '/project/output/wordcount/run-001/part-r-*'
 ~~~
 
-第一次运行先使用固定小输入。重复演示输入不用重复 put，输出换 run-002。大规模测试使用独立输入子目录，verify 的预期要与该组数据匹配。
+第一次运行先使用固定小输入。重复演示输入不用重复 put，输出换 run-002。verify.sh 默认核对上面的小样例。大规模测试使用独立输入/输出子目录，在 tests/wordcount/ 另提供与大数据匹配的预期和核对命令，不改公共脚本参数。
+
+另外保留一次 Hadoop 官方自带 WordCount 的对照演示，命令见 [4 号指南](../yarn-mapreduce/README.md)。老师要求了自带实例的配置与演示；本组源码实现与官方演示都要说明清楚。
 
 ## 6. 怎样算完成
 

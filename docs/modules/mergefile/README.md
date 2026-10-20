@@ -4,7 +4,9 @@
 
 设计并实现 Java MapReduce 多文件合并：多个输入文件进入 HDFS，由集群执行 MapReduce 后输出约定的合并结果。需要同时展示数据分布和计算分布。
 
-**先固定“合并”的规则，再写代码。** 当前课程材料中的 MergeFile 细节尚未明确，不能自行把某种去重或排序规则当成老师的要求。
+**组长已决定先由 7 号提出方案。** 建议 10 月 22 日前把是否去重/排序、空行规则、输出文件数、参考来源、固定输入与唯一预期写在本目录，提交方案 PR，组长确认后再实现。老师未指定细节，不能把本组设计写成老师原话。
+
+当前 Hadoop 3.3.6 的 examples JAR 没有名为 MergeFile 的示例类，不要尝试一个假定存在的 mergefile 子命令。老师所指实例与实现来源由本方案说明，必要时核对课程参考资料。
 
 ## 2. 在哪里改
 
@@ -45,7 +47,7 @@ bash /workspace/apps/mergefile/verify.sh /project/output/mergefile/run-001
 hdfs dfs -ls /project/output/mergefile/run-001
 ~~~
 
-输入已上传则不重复 put；再次演示换新的输出目录。查看内容的命令应按实际产物在模块 README 中写明。不能用 hdfs dfs -getmerge 在电脑上拼接文件来替代本模块的 MapReduce 实现。
+verify.sh 默认核对已确认的小样例；多 Worker 演示使用独立数据目录，在 tests/mergefile/ 给出相应预期及核对命令，不把小样例答案套到大数据。输入已上传则不重复 put；再次演示换新的输出目录。查看内容的命令应按实际产物在模块 README 中写明。不能用 hdfs dfs -getmerge 在电脑上拼接文件来替代本模块的 MapReduce 实现。
 
 ## 6. 怎样算完成
 

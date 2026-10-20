@@ -2,6 +2,8 @@
 
 只做自己系统的第 1—8 步，再创建任务分支。一次执行一个代码框，报错先停下处理。电脑无需另装 Java 或 Hadoop。
 
+截止 **2026 年 11 月 3 日**；组内里程碑、视频要求和最终交付见 [进度与验收清单](final-acceptance.md)。首次开工先把 GitHub 用户名交给组长并接受仓库邀请，否则只能下载、不能推送。
+
 不清楚目录和文件用途时，先看 [项目文件说明](project-files.md)。
 
 [分支用途](#branches) · [Windows](#windows) · [Mac](#mac) · [任务分支](#task-branch) · [每天使用](#daily) · [提交与合并](#submit)
@@ -313,17 +315,24 @@ git push -u origin HEAD
 
 commit 将改动保存到本地 Git；push 将**当前个人分支**上传 GitHub。首次推送后 GitHub 才会显示该分支，后续也可继续用此命令。
 
-首次 commit 提示缺少身份时，用 git config user.name 和 git config user.email 设置本仓库姓名、邮箱再重试。push 报权限错误时，确认已接受组长邀请、登录的是自己的 GitHub 账号。
+首次 commit 提示缺少身份时，先执行下面两条，把引号内换成自己的姓名和 GitHub 提交邮箱，再重试 commit：
+
+~~~text
+git config user.name "你的姓名"
+git config user.email "你的GitHub提交邮箱"
+~~~
+
+push 报权限错误时，确认已接受组长邀请、登录的是自己的 GitHub 账号。
 
 ### 4. 在 GitHub 申请合并（PR）
 
 1. 打开 [仓库 Pull requests](https://github.com/deep-hang/hadoop/pulls)，点击 New pull request。
 2. **base 选 main，compare 选自己的 feat/...**，核对文件范围。
-3. 点击 Create pull request，写清改了什么、怎样运行、测试结果和未完成项。尚未测试通过的工作使用 Draft，暂不申请合并。
+3. 点击 Create pull request，写清改了什么、怎样运行、测试结果和未完成项。尚未测试通过的工作使用 Draft，暂不申请合并。2—4 号配套模块相互依赖时，按 [联合验证流程](member-onboarding.md#joint-check) 提前推送草稿，不互相等待。
 
 ### 5. 组长审核后，才进入 main
 
-组长检查改动并复验，通过后批准，再点击 Merge pull request。**组员不直接推送 main，也不自行合并 PR。**
+组长检查改动并复验，通过后批准，使用 Create a merge commit 方式点击 Merge pull request；保留个人功能分支供后续开发。**组员不直接推送 main，也不自行合并 PR。**
 
 收到修改意见时，继续在原 feat/... 分支修改、复测，再重复第 2—3 步；原 PR 自动更新，无需另建 PR。
 

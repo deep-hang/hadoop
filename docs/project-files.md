@@ -8,7 +8,7 @@
 
 | 目录 / 文件 | 里面是什么、有什么用 | 谁负责 |
 | --- | --- | --- |
-| [README.md](../README.md) | 项目首页：入口链接、统一版本、目录与负责人 | 所有人阅读 |
+| [README.md](../README.md) | 项目首页：开工入口、统一版本与分支用途 | 所有人阅读 |
 | [.github/CODEOWNERS](../.github/CODEOWNERS) | 指定所有文件由组长审核，配合 GitHub 分支保护生效 | 1 号 |
 | [.changes/](../.changes/) | 公共变更记录：改了什么、影响谁、怎么验证和回退 | 公共文件修改者 |
 | [apps/](../apps/) | 两个应用的代码和测试输入 | 6、7 号 |
@@ -100,6 +100,7 @@ dev.ps1 与 dev.sh 的动作对应如下：
 | [contributing.md](contributing.md) | 开发提交前：核对分支、修改范围、测试与 PR 规则 |
 | [member-onboarding.md](member-onboarding.md) | 模块交接时：按顺序联调集群、配置和应用 |
 | [windows-setup.md](windows-setup.md) | Windows 安装 Docker 时缺少 WSL/虚拟化组件 |
+| [final-acceptance.md](final-acceptance.md) | 组长安排进度、安装讲解、整体验收、PPT/视频汇总 |
 | [phase0-status.md](phase0-status.md) | 查看已完成的验证、镜像标识和当前未完成内容 |
 | [requirements.md](requirements.md) | 核对课程验收要求，以及需向老师确认的事项 |
 

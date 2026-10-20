@@ -20,10 +20,10 @@
 ## 3. 按什么顺序做
 
 1. 完成 [公共环境八步](../../platform-setup.md)，在 feat/distributed 分支开发。阅读 [公共启动说明](../../cluster-startup.md)。
-2. 参考 [已验证的 Compose](../../../tests/common/fixtures/cluster/compose.yaml) 新建 compose/distributed.yaml。注意正式文件位于 compose/，相对挂载路径需重算：仓库根目录是 ..，不是测试文件中的 ../../../..。
+2. 参考 [已验证的 Compose](../../../tests/common/fixtures/cluster/compose.yaml) 新建 compose/distributed.yaml。注意正式文件位于 compose/，相对挂载路径需重算：仓库根目录是 ..，env_file 指向 ../.development；四个配置文件分别从 ../config/hdfs/、../config/yarn/ 挂载。不能原样照抄测试目录的相对路径。
 3. 固定服务名与 hostname 为 master、worker1、worker2，使用 hadoop-base:v0.1、linux/amd64、init: true、同一网络。骨架阶段可以暂用保持运行的命令测试网络，但必须标注“仅骨架”，交付前换成真实服务入口。
 4. 把仓库挂到 /workspace，master 需能读写应用目录，以便编译生成 build/ 产物。三个节点各有独立命名卷，挂到 /var/lib/hadoop；确认 UID 1000 可写，不能共用同一个数据卷。
-5. 等 3、4 号的配置合入 main 后，在自己的功能分支同步 origin/main。逐文件挂载四个 site XML 到 /opt/hadoop/etc/hadoop，不覆盖整个配置目录。环境变量及 JVM 资源参考测试 Compose，再根据电脑实测调整。
+5. 与 3、4 号先推送配套草稿 PR，由组长按 [联合验证流程](../../member-onboarding.md#joint-check) 合到临时目录测试；正式配套合入后再同步 origin/main。逐文件挂载四个 site XML 到 /opt/hadoop/etc/hadoop，不覆盖整个配置目录。环境变量及 JVM 资源参考测试 Compose，再根据电脑实测调整。
 6. 节点命令分别调用 bash /workspace/scripts/hadoop-node.sh master 或 worker。首次显式执行 init-namenode；普通启动和重启不格式化。不使用依赖 SSH 的 start-dfs.sh / start-yarn.sh。
 7. master 映射 127.0.0.1:9870:9870、127.0.0.1:8088:8088。记录 Docker CPU/内存、启动等待和失败时查日志的方法。
 8. 按下方顺序实测，再交给 6、7 号进入 master 提交应用。

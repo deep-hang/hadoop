@@ -17,6 +17,6 @@
 
 ## 按需查看
 
-[下载镜像（约 829 MB）](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz) · [三节点启动（2—4 号）](docs/cluster-startup.md) · [模块交接](docs/member-onboarding.md) · [课程要求](docs/requirements.md) · [验证记录](docs/phase0-status.md)
+[下载镜像（约 829 MB）](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz) · [三节点启动（2—4 号）](docs/cluster-startup.md) · [模块交接](docs/member-onboarding.md) · [课程要求](docs/requirements.md) · [进度与最终验收](docs/final-acceptance.md) · [验证记录](docs/phase0-status.md)
 
 版本与路径以 [.development](.development) 为准；组长维护镜像看 [构建说明](docker/README.md)。当前开发容器供编译测试使用，三节点集群按启动说明接入。

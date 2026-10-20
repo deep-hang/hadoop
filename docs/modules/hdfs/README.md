@@ -21,6 +21,8 @@
 6. 再用 fsck 查看块位置，保存 worker1、worker2 的证据；配合 2 号重启，确认文件仍可读。
 7. 把这些步骤写进 tests/hdfs/ 的测试脚本；错误、内容不一致或节点数不符时返回非零。
 
+若配置与 2 号编排互相等待，先提交配套 Draft PR，按 [联合验证流程](../../member-onboarding.md#joint-check) 共同测试，再审核合入。
+
 ## 4. 怎样验证
 
 **先等 2 号交付正式集群并接入你的配置**，按 [2 号说明](../distributed/README.md) 从电脑终端进入 master。以下命令均在 master 内执行：
