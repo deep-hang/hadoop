@@ -36,11 +36,11 @@ Hadoop 安装目录 `/opt/hadoop`，Java 目录 `/opt/java/openjdk`，配置目�
 
 ## 联调时统一怎么用
 
-1. 当前方案是在一台电脑上运行 master、worker1、worker2 三个独立容器，每人可在自己电脑复现；不是把组员的电脑分别当作三个节点。课程是否接受此部署方式见 [验收要求](requirements.md)。
+1. 当前方案是在一台电脑上运行 master、worker1、worker2 三个独立容器，每人可在自己电脑复现；不是把组员的电脑分别当作三个节点。老师已接受 Docker，确认记录见 [验收要求](requirements.md)。
 2. 完全分布式阶段统一从 master 容器提交应用。2 号交付进入该容器的完整命令，并挂载 /workspace；3、4 号让它和 Worker 使用同一套有效配置。
 3. config/hdfs/ 由 3 号提供 core-site.xml、hdfs-site.xml；config/yarn/ 由 4 号提供 yarn-site.xml、mapred-site.xml。2 号逐文件接入实际 Hadoop 配置目录，不让一套配置覆盖另一套；配置加载后再验收。
 4. 最终 run.sh / verify.sh 的路径按 HDFS 解释，例如 /project/input/wordcount、/project/output/wordcount/run-001。测试输入先由仓库 input/ 上传 HDFS；重复演示使用新的输出子目录，不默认删除旧结果。
 5. 基础镜像包含 javac、jar，没有 Maven、SSH 客户端或 SSH 服务。应用优先用现有工具编译；若确需其他依赖，先由组长统一处理，不能只在某个人容器里手工安装。
-6. 2、3、4 号通过各容器本地命令管理守护进程，并确保容器持续运行、停止时能清理进程。不要直接照搬依赖 SSH 的 start-dfs.sh / start-yarn.sh；如需 SSH 方案，先走公共镜像变更。
+6. 2、3、4 号复用 [公共启动脚本](cluster-startup.md)，在各容器本地启动并管理服务。不要直接照搬依赖 SSH 的 start-dfs.sh / start-yarn.sh。
 
-启动方式依据 [Hadoop 3.3.6 官方集群说明](https://hadoop.apache.org/docs/r3.3.6/hadoop-project-dist/hadoop-common/ClusterSetup.html)。以上是交付约定，尚不代表集群已实现。
+启动方式依据 [Hadoop 3.3.6 官方集群说明](https://hadoop.apache.org/docs/r3.3.6/hadoop-project-dist/hadoop-common/ClusterSetup.html)。公共启动能力提供独立三节点复验；正式集群仍由 2—4 号交付，见 [启动说明](cluster-startup.md)。

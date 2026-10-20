@@ -67,9 +67,11 @@
 | [docker/Dockerfile](../docker/Dockerfile) | 镜像配方：安装固定 Java/Hadoop、校验下载包、创建开发用户；组员直接下载镜像即可 |
 | [docker/entrypoint.sh](../docker/entrypoint.sh) | 容器启动时检查工具和配置，再执行指定命令；不自动启动集群 |
 | [docker/cache/](../docker/cache/) | 组长构建时可用的 Hadoop 官方安装包缓存，不是供组员导入的 Docker 镜像包 |
+| [scripts/hadoop-node.sh](../scripts/hadoop-node.sh) | 公共无 SSH 启动脚本，处理显式初始化、master/worker 服务和退出清理；由集群编排调用 |
 | [scripts/dev.ps1](../scripts/dev.ps1) | Windows 快捷入口 |
 | [scripts/dev.sh](../scripts/dev.sh) | Mac 快捷入口 |
 | [scripts/windows-enable-wsl.ps1](../scripts/windows-enable-wsl.ps1) | 可选的 Windows 组件准备工具，需要管理员权限；日常开发不运行，不会自动重启 |
+| [tests/common/check-cluster.py](../tests/common/check-cluster.py) | 使用独立配置复验三节点、真实 YARN 作业和重启数据保留 |
 | [tests/common/check-contract.py](../tests/common/check-contract.py) | 检查公共版本、路径、目录、XML、换行和文档链接 |
 | [tests/common/verify-base.sh](../tests/common/verify-base.sh) | 容器内检查 Java/Hadoop，并实际编译运行 Hadoop API 探针 |
 | [tests/common/verify-entrypoint.sh](../tests/common/verify-entrypoint.sh) | 检查容器启动入口的报错、参数和退出码行为 |
@@ -93,6 +95,7 @@ dev.ps1 与 dev.sh 的动作对应如下：
 | --- | --- |
 | [platform-setup.md](platform-setup.md) | 首次安装、下载导入、进入容器和每天使用 |
 | [project-files.md](project-files.md) | 了解项目目录与文件，也就是本文 |
+| [cluster-startup.md](cluster-startup.md) | 2—4 号接入公共启动脚本、复验三节点能力 |
 | [interfaces.md](interfaces.md) | 写模块前：核对节点名、路径与应用脚本接口 |
 | [contributing.md](contributing.md) | 开发提交前：核对分支、修改范围、测试与 PR 规则 |
 | [member-onboarding.md](member-onboarding.md) | 模块交接时：按顺序联调集群、配置和应用 |
