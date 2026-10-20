@@ -18,6 +18,8 @@
 
 ## 快速开始（Windows PowerShell）
 
+组员首次接入先看 [成员上手与联调验收](docs/member-onboarding.md)：获取同一源码、导入共享镜像或自行构建、在自己的电脑通过验证，再开始模块开发。
+
 在仓库根目录执行：
 
 ```powershell
