@@ -21,3 +21,7 @@ Docker Desktop 4.96.0 已通过官方安装包按当前用户模式安装，验�
 重启后 Docker Linux 引擎已就绪。由于 Apache Archive 单路下载持续约 600 KB/s，增加可选的 `docker/cache/` 官方安装包缓存路径，构建时无论是否命中缓存都执行固定 SHA512 校验；缓存缺省时保持从官方地址下载。安装包已加入 Git 忽略列表，版本、运行配置及应用接口不变。
 
 本地真实构建通过。PowerShell doctor/build/verify、Bash verify、Linux 容器内入口行为验证通过；Java/javac 1.8.0_442、Hadoop 3.3.6 均与契约一致，Hadoop API 编译运行探针输出 BASE_API_PASS。`.development` 状态更新为 runtime-verified；2–7 号模块未实现。镜像 ID 及完整结果记录在 `docs/phase0-status.md`。
+
+## 分支发布
+
+用户明确要求发布后，已推送 `common/phase0-bootstrap` 至 `origin` 并设置上游跟踪。同步更新 README、验收报告和协作说明中的发布状态；未创建或修改 main，未发布稳定标签，未上传大型安装包或本地镜像。

@@ -1,6 +1,6 @@
 # Phase 0 验证报告
 
-日期：2026-10-20（Asia/Shanghai）。状态：**公共底座本地构建、运行验收通过**；未推送远程，未修改 main。
+日期：2026-10-20（Asia/Shanghai）。状态：**公共底座本地构建、运行验收通过**；已发布至 GitHub 的 `common/phase0-bootstrap` 分支，未创建或修改 main。
 
 后续环境准备：已通过 Windows 管理员确认启用 Virtual Machine Platform，状态由 `Disabled` 变为 `EnablePending`，WSL 可选组件原已启用。系统报告需重启，尚未自动重启。
 
@@ -18,7 +18,7 @@ Docker Desktop **4.96.0（243774）** 已按当前用户模式成功安装，安
 | WSL / 虚拟机平台 | 组件已准备，重启生效，HypervisorPresent=True |
 | 远程仓库 | `https://github.com/deep-hang/hadoop`，克隆时为空 |
 | 工作分支 | `common/phase0-bootstrap`，独立初始分支 |
-| 提交 / 发布 | 以独立分支增量提交保存，未推送、未创建 main 或稳定标签 |
+| 提交 / 发布 | 已增量提交并推送 `origin/common/phase0-bootstrap`，未创建 main 或稳定标签 |
 
 ## 验证结果
 
@@ -53,7 +53,7 @@ PASS: frozen Java/Hadoop versions, paths, compiler and Hadoop API loading
 
 ## 下一步
 
-1. 组长审阅独立分支中的公共契约及验证结果，再确定首次远程发布和 `v0.1-bootstrap` 标签；当前远程仓库仍无分支，不擅自创建 main。
+1. 组长审阅已发布分支中的公共契约及验证结果，再确定 main 与 `v0.1-bootstrap` 稳定标签；本次仅发布工作分支。
 2. 向成员交接相同源码版本与基础镜像。可分别构建，或由组长导出同一份已验证镜像供成员导入；不能只传本机路径。
 3. 后续修改公共环境后重新运行 doctor、build、verify，并更新变更说明；当前 `.development` 已标为 `runtime-verified`。
 4. 固定镜像后交接：2 号做三节点骨架，3/4 号分别接入 HDFS/YARN，5 号开展两种模式，6/7 号可先做应用自身代码及测试数据。
