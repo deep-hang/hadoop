@@ -15,6 +15,6 @@ container_os="$(docker info --format '{{.OSType}}')"
 case "$action" in
     doctor) "${compose[@]}" config --quiet ;;
     build) "${compose[@]}" build ;;
-    verify) "${compose[@]}" run --rm -T dev bash tests/verify-base.sh ;;
+    verify) "${compose[@]}" run --rm -T dev bash tests/common/verify-base.sh ;;
     shell) "${compose[@]}" run --rm dev bash ;;
 esac

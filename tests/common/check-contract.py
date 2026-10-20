@@ -1,14 +1,14 @@
 """Static contract validation, using Python's standard library only.
 
 This does not replace the required container build and runtime verification.
-Run from any directory: python tests/check-contract.py
+Run from any directory: python tests/common/check-contract.py
 """
 from pathlib import Path
 import re
 import unittest
 import xml.etree.ElementTree as ET
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = dict(
     line.split('=', 1)
     for line in (ROOT / '.development').read_text(encoding='utf-8').splitlines()
@@ -51,7 +51,11 @@ class PublicContract(unittest.TestCase):
         for folder in ['docker', 'compose', 'config/common', 'config/hdfs', 'config/yarn',
                        'modes/standalone', 'modes/pseudo', 'apps/wordcount/src',
                        'apps/wordcount/input', 'apps/mergefile/src', 'apps/mergefile/input',
-                       'tests', 'docs', '.changes']:
+                       'tests/common', 'tests/distributed', 'tests/hdfs', 'tests/yarn-mapreduce',
+                       'tests/standalone', 'tests/pseudo', 'tests/wordcount', 'tests/mergefile',
+                       'tests/integration', 'docs/modules/distributed', 'docs/modules/hdfs',
+                       'docs/modules/yarn-mapreduce', 'docs/modules/standalone-pseudo',
+                       'docs/modules/wordcount', 'docs/modules/mergefile', '.changes']:
             self.assertTrue((ROOT / folder).is_dir(), folder)
 
     def test_shell_files_use_lf(self):

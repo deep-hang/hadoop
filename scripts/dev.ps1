@@ -23,7 +23,7 @@ try {
         switch ($Action) {
             'doctor' { & docker @composeArgs config --quiet }
             'build'  { & docker @composeArgs build }
-            'verify' { & docker @composeArgs run --rm -T dev bash tests/verify-base.sh }
+            'verify' { & docker @composeArgs run --rm -T dev bash tests/common/verify-base.sh }
             'shell'  { & docker @composeArgs run --rm dev bash }
         }
     }

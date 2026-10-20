@@ -19,6 +19,10 @@ Windows 11 / Intel；Git 2.53.0；Docker Desktop 4.96.0、CLI 29.9.1、Compose 5
 
 Mac 尚未实机验收。三节点、HDFS/YARN、运行模式和两个应用属于后续模块。
 
+## 测试目录调整复验
+
+公共测试已移至 tests/common/，新增各模块测试与实验材料目录。7 项契约检查、全仓库本地文档链接、Bash 语法和入口行为测试通过；PowerShell doctor / verify、Git Bash 的 Bash verify 均通过，继续使用原镜像。Mac 宿主机仍未实测。
+
 ## 已分发镜像
 
 [GitHub 发布页](https://github.com/deep-hang/hadoop/releases/tag/phase0-image-v0.1) · [下载镜像包](https://github.com/deep-hang/hadoop/releases/download/phase0-image-v0.1/hadoop-base-v0.1.tar.gz)

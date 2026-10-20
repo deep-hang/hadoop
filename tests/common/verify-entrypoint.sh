@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Host-side behavior tests. Git Bash works; no Java/Hadoop/Docker required.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/.."
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 scratch="$(mktemp -d)"
 trap 'rm -rf -- "$scratch"' EXIT
 export JAVA_HOME="$scratch/java"

@@ -14,10 +14,10 @@
 | [compose/](../compose/) | 开发容器，以及完全分布式三节点集群的网络、挂载和启动 | bootstrap 开发容器由 1 号维护；完全分布式编排由 2 号开发 |
 | [config/](../config/) | Hadoop 的公共配置、HDFS 与 YARN 配置 | 1、3、4 号分工 |
 | [docker/](../docker/) | 统一 Java/Hadoop 环境的构建配方和启动入口 | 1 号 |
-| [docs/](../docs/) | 使用说明、接口、协作和验收文档 | 对应内容负责人 |
+| [docs/](../docs/) | 使用说明、接口、协作和验收文档 | 根目录公共说明由 1 号维护；成员材料放 [modules/](modules/README.md) |
 | [modes/](../modes/) | 单机、伪分布式两种运行方式 | 5 号 |
 | [scripts/](../scripts/) | 检查环境、验证和进入容器的快捷脚本 | 1 号 |
-| [tests/](../tests/) | 验证公共底座与后续模块是否正常 | 公共测试由 1 号维护；模块测试由对应成员补充 |
+| [tests/](../tests/) | 验证公共底座与后续模块是否正常 | common/ 由 1 号维护；其余按模块分目录，见 [测试分工](../tests/README.md) |
 | [.development](../.development) | 全组公共参数：版本、目录、节点名、端口和应用路径 | 1 号协调维护 |
 | [.dockerignore](../.dockerignore) | 构建镜像时不传入的内容，如 Git 记录、日志、编译产物 | 1 号 |
 | [.gitattributes](../.gitattributes) | 统一文本换行为 LF，避免 Windows/Mac 脚本换行问题 | 1 号 |
@@ -69,9 +69,9 @@
 | [scripts/dev.ps1](../scripts/dev.ps1) | Windows 快捷入口 |
 | [scripts/dev.sh](../scripts/dev.sh) | Mac 快捷入口 |
 | [scripts/windows-enable-wsl.ps1](../scripts/windows-enable-wsl.ps1) | 可选的 Windows 组件准备工具，需要管理员权限；日常开发不运行，不会自动重启 |
-| [tests/check-contract.py](../tests/check-contract.py) | 检查公共版本、路径、目录、XML、换行和文档链接 |
-| [tests/verify-base.sh](../tests/verify-base.sh) | 容器内检查 Java/Hadoop，并实际编译运行 Hadoop API 探针 |
-| [tests/verify-entrypoint.sh](../tests/verify-entrypoint.sh) | 检查容器启动入口的报错、参数和退出码行为 |
+| [tests/common/check-contract.py](../tests/common/check-contract.py) | 检查公共版本、路径、目录、XML、换行和文档链接 |
+| [tests/common/verify-base.sh](../tests/common/verify-base.sh) | 容器内检查 Java/Hadoop，并实际编译运行 Hadoop API 探针 |
+| [tests/common/verify-entrypoint.sh](../tests/common/verify-entrypoint.sh) | 检查容器启动入口的报错、参数和退出码行为 |
 
 dev.ps1 与 dev.sh 的动作对应如下：
 
@@ -83,6 +83,8 @@ dev.ps1 与 dev.sh 的动作对应如下：
 | config / build | 维护者检查编排 / 重建镜像；组员按使用说明导入即可 |
 
 普通组员不必直接执行 tests/ 下的每个文件，先用 verify 完成基础验收；自己的模块另补功能测试。
+
+测试已按 common/、distributed/、hdfs/、yarn-mapreduce/、standalone/、pseudo/、wordcount/、mergefile/、integration/ 分开。负责人和提交规则见 [测试目录](../tests/README.md)。
 
 ## 5. docs/：需要时查哪份说明
 
@@ -96,6 +98,8 @@ dev.ps1 与 dev.sh 的动作对应如下：
 | [windows-setup.md](windows-setup.md) | Windows 安装 Docker 时缺少 WSL/虚拟化组件 |
 | [phase0-status.md](phase0-status.md) | 查看已完成的验证、镜像标识和当前未完成内容 |
 | [requirements.md](requirements.md) | 核对课程验收要求，以及需向老师确认的事项 |
+
+实验步骤、结果和截图按成员放在 [docs/modules/](modules/README.md)；docs/ 根目录保留公共说明，不让大家共同编辑一份实验报告。
 
 ## 6. 自己该改哪些文件
 

@@ -37,7 +37,9 @@ Phase 0 公共底座已完成并通过本地运行验证；2—7 号模块由各
 | modes/standalone/、modes/pseudo/ | 单机、伪分布式 | 5 号 |
 | apps/wordcount/ | WordCount | 6 号 |
 | apps/mergefile/ | MergeFile | 7 号 |
-| tests/、docs/ | 本模块测试及说明 | 对应负责人 |
+| tests/common/、docs/ 根目录 | 公共测试和说明 | 1 号 |
+| tests/ 各模块子目录 | 本模块测试，见 [测试分工](tests/README.md) | 对应负责人 |
+| docs/modules/ | 分模块实验材料，见 [文档分工](docs/modules/README.md) | 对应负责人 |
 
 [协作规则](docs/contributing.md) · [验证记录](docs/phase0-status.md) · [课程验收要求](docs/requirements.md)
 
