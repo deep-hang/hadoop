@@ -4,44 +4,12 @@
 
 ## 第一步：按自己的系统验收底座
 
-直接按 [不同系统使用说明](platform-setup.md) 选择 Windows、Intel Mac、Apple 芯片 Mac 或 Linux 的步骤。不需要提前向组长报告系统或处理器；每人在自己的电脑验证通过后即可开始本模块开发，公共 Java/Hadoop 版本按仓库约定使用。
+1. 打开 [不同系统使用说明](platform-setup.md)，只选择自己的系统，依次完成第 1—8 步，不跳过镜像获取就直接验证。
+2. 确认 verify 输出 BASE_API_PASS 和 PASS: frozen Java/Hadoop versions, paths, compiler and Hadoop API loading。每位成员都在自己电脑取得此结果。
+3. 进入容器确认 /workspace、Java 和 Hadoop 版本，再 exit 回电脑终端。
+4. 通过后继续第二步；已按系统说明创建任务分支的人只核对，不重复创建。以后按 [每天操作顺序](platform-setup.md#daily) 使用。
 
-当前镜像固定 `linux/amd64`。Windows 需 Docker Desktop 的 Linux 容器及可用虚拟化组件；Intel/AMD 电脑与该架构匹配。Apple M 系列等 ARM 电脑需要模拟运行，速度可能较慢，必须实机验证。Docker Desktop 提供模拟支持，但这不能替代组员机器上的验收，见 [Docker 架构与模拟说明](https://docs.docker.com/build/building/multi-platform/)。目前实测环境为组长的 Windows 11 / Intel 电脑。
-
-安装 Git 和适合本机的 Docker 后，启动 Docker，执行：
-
-```text
-git clone --branch common/phase0-bootstrap https://github.com/deep-hang/hadoop.git
-cd hadoop
-```
-
-获取基础镜像，二选一：
-
-- 推荐首轮接入时由组长分享已验证的 `hadoop-base-v0.1.tar.gz`，成员在下载目录执行 `docker load --input hadoop-base-v0.1.tar.gz`。这会导入 `hadoop-base:v0.1`，不需要重新下载 Hadoop。不要把压缩包上传 Git。Docker 支持直接导入 gzip 压缩的镜像包，见 [官方 load 说明](https://docs.docker.com/reference/cli/docker/image/load/)。
-- 不方便传文件时，在项目根目录按 README 执行 build，自行构建固定版本的镜像；首次下载可能较慢。
-
-再回到项目根目录验证。Windows PowerShell：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 doctor
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 verify
-```
-
-macOS/Linux 的 Bash：
-
-```bash
-bash scripts/dev.sh doctor
-bash scripts/dev.sh verify
-```
-
-最后应输出：
-
-```text
-BASE_API_PASS
-PASS: frozen Java/Hadoop versions, paths, compiler and Hadoop API loading
-```
-
-每位成员都要在自己电脑上取得这个结果。失败时发完整错误及系统/处理器信息给组长，先解决接入问题，不另装一套本机 Hadoop 来绕过。镜像包只提供环境，项目源码仍从 GitHub 获取。
+不需要提前登记系统或处理器。报错时再反馈停在哪一步、完整命令、报错与系统/芯片。镜像只提供环境，源码仍从 GitHub 获取；当前底座不自动启动或连接未来集群。
 
 ## 第二步：从同一底座开分支
 

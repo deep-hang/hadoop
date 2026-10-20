@@ -1,25 +1,55 @@
-# Windows 容器前置条件
+# Windows：Docker 安装前置条件（新成员按顺序操作）
 
-首次检查：Git 可用；未发现 Docker Desktop，`docker` 不在 PATH；CPU 报告 BIOS 虚拟化已开启；WSL 状态提示 WSL2 所需组件尚未准备好。
+本文只处理 Windows 安装 Docker 时的前置问题。完整项目步骤见 [Windows 第 1—8 步](platform-setup.md#windows)。如果那里的第 3 步已全部通过，不需要重新启用组件、安装软件或重启。
 
-2026-10-20 后续准备：已通过 Windows 管理员确认运行 `scripts/windows-enable-wsl.ps1`。虚拟机平台由 `Disabled` 变为 `EnablePending`，WSL 组件原本为 `Enabled`，系统明确要求重启。没有自动重启，也没有修改 BIOS；没有发现需要更改的 hypervisor 启动项。
+## 第 1 步：核对本机是否符合要求
 
-Docker Desktop 4.96.0 已按当前用户模式成功安装，安装包的 Docker Inc 发布者签名验证通过，安装程序退出码 0。安装位置为 `%LOCALAPPDATA%\Programs\DockerDesktop`，Docker CLI 29.9.1、Compose v5.6.0 均可用。用户已经重启，虚拟机平台已生效，Docker Linux 引擎启动成功，公共镜像构建及运行验证通过；本机无需重复下载安装或启用组件。以下步骤供其他尚未配置环境的成员参考。
+1. 打开 [Docker 官方 Windows 安装说明](https://docs.docker.com/desktop/setup/install/windows-install/)，核对自己的 Windows 版本、WSL 和硬件要求。
+2. 在任务管理器的“性能 → CPU”查看“虚拟化”状态。组长电脑已开启不代表所有组员电脑都已开启；按自己电脑状态处理。
+3. 如硬件或系统不符合要求，先按官方说明解决，不继续执行项目构建。
 
-## 完成环境安装
+## 第 2 步：打开管理员 PowerShell，准备 WSL2 组件
 
-1. 按 [Docker 官方 Windows 安装说明](https://docs.docker.com/desktop/setup/install/windows-install/) 检查系统要求。
-2. 在管理员 PowerShell 中按官方流程启用 WSL 与 Virtual Machine Platform（可使用 `wsl --install --no-distribution`），根据系统提示重新启动。此操作不是在项目普通终端中执行。
-3. 安装 Docker Desktop，选择 WSL2 后端及 Linux 容器，启动后等待引擎就绪。完成首次运行协议等交互。
-4. 重新打开终端，在仓库根目录运行 `scripts/dev.ps1 doctor`、`build`、`verify`（完整调用见 README）。
+1. 在开始菜单搜索 PowerShell，右键选择“以管理员身份运行”，确认系统授权提示。
+2. 按 Docker 官方 WSL2 安装流程准备组件。尚未安装 WSL 时，可在管理员窗口执行：
 
-若仍提示虚拟化不可用，结合 Windows 可选组件和 WSL 的实际错误排查；硬件查询已报告 BIOS 开启，不应仅凭 WSL 通用提示去改 BIOS。
+```powershell
+wsl --install --no-distribution
+```
 
-公共脚本 `scripts/windows-enable-wsl.ps1` 可在管理员 PowerShell 中重新执行，保留组件前后状态并报告是否需要重启，默认将结果写入当前用户临时目录的 `hadoop-windows-components.json`。脚本不自动重启。完成 Docker 安装后无需安装本机 Java/Hadoop。
+3. 如果系统报告已有安装或其他错误，按实际提示和官方安装说明处理，不反复卸载组件。项目不要求为了 Docker 单独安装 Ubuntu 发行版。
+4. 如果提示要重新启动，保存文件后重启电脑，再继续。关闭终端不能替代重启。
 
-## 常见问题
+仓库里的 scripts/windows-enable-wsl.ps1 是组长诊断时使用的可选辅助脚本，不是成员必须重复运行的步骤。它只启用相关组件并报告状态，不自动重启。
 
-- 找不到 docker：安装未完成或终端尚未刷新 PATH。
-- 无法连接引擎：启动 Docker Desktop，并确认 Linux 容器后端正常。
-- 拉取镜像失败：检查 Docker Desktop 的代理和网络配置；不要随意替换项目版本。
-- Linux 宿主机挂载目录不可写：镜像使用 UID 1000；在宿主机为工作目录设置适当的用户权限，或先协调用户映射。
+## 第 3 步：安装并打开 Docker Desktop
+
+1. 从 Docker 官方 Windows 安装页获取适合本机的安装包，按页面流程安装。
+2. 使用 WSL2 后端与 Linux 容器，完成安装及首次运行提示。
+3. 从开始菜单打开 Docker Desktop，等待引擎运行成功；如果提示 WSL 需要更新，按官方流程处理后重试。
+4. 如果提示虚拟化不可用，结合自己电脑的虚拟化状态、Windows 组件和具体错误排查，不直接照搬组长机器的历史判断。
+
+## 第 4 步：用普通 PowerShell 验证
+
+关闭安装前打开的旧终端，重新打开普通 PowerShell，逐条执行：
+
+```powershell
+docker --version
+docker compose version
+docker info --format '{{.OSType}}'
+```
+
+前两条应显示版本，第三条应显示 linux。任意一条失败都先处理，不继续构建。后续项目命令不要求管理员权限。
+
+## 第 5 步：失败时按顺序自查
+
+1. 找不到 docker：确认安装已完成，关闭并重开终端，再检查。
+2. 无法连接引擎：打开 Docker Desktop，等待启动完成，核对 Linux 容器模式。
+3. 引擎因 WSL 或虚拟化启动失败：保留完整错误，按官方安装说明检查缺少的组件、更新或重启要求。
+4. 仍无法解决：将完整报错、已完成的步骤和电脑系统信息发给组长。
+
+## 第 6 步：回到项目说明继续
+
+回到 [Windows 使用顺序](platform-setup.md#windows)，从第 4 步下载代码开始；已经下载过的成员按“已有项目怎么办”核对，再继续配置检查、镜像获取和验证。无需在 Windows 本机另装 Java/Hadoop。
+
+组长机器的实际安装和验证结果见 [Phase 0 验证报告](phase0-status.md)，它是历史记录，不代表其他成员已经完成安装。

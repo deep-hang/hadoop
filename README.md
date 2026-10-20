@@ -20,31 +20,16 @@
 
 直接打开 [不同系统使用说明](docs/platform-setup.md)，选择 Windows、Intel Mac、M 系列 Mac 或 Linux。无需提前向组长登记系统，按对应步骤完成镜像获取和基础验证即可。
 
-## 快速开始（Windows PowerShell）
+## 第一次使用：按顺序完成
 
-组员首次接入先看 [成员上手与联调验收](docs/member-onboarding.md)：获取同一源码、导入共享镜像或自行构建、在自己的电脑通过验证，再开始模块开发。
+1. 打开 [不同系统使用说明](docs/platform-setup.md)，选自己的系统，依次完成第 1—8 步，每步都有操作位置、命令和成功结果。
+2. 镜像导入或构建后验证，看到 BASE_API_PASS 和 PASS: frozen Java/Hadoop versions, paths, compiler and Hadoop API loading。
+3. 进入容器确认工作目录和版本，再退出。
+4. 在电脑终端 [创建自己的任务分支](docs/platform-setup.md#task-branch)，按 [联调验收](docs/member-onboarding.md) 开发与交付。
 
-在仓库根目录执行：
+以后按 [每天操作顺序](docs/platform-setup.md#daily) 使用，不必重复安装或构建。Windows 的 Bypass 参数仅作用于此次脚本进程，不修改永久执行策略。
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 doctor
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 build
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 verify
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\dev.ps1 shell
-```
-
-`Bypass` 仅作用于此次脚本进程，不修改系统执行策略。Linux/macOS 对应使用 `bash scripts/dev.sh doctor|build|verify|shell`（每次选择一个动作）。
-
-不使用脚本也可以：
-
-```powershell
-docker compose --env-file .development -f compose/bootstrap.yaml config --quiet
-docker compose --env-file .development -f compose/bootstrap.yaml build
-docker compose --env-file .development -f compose/bootstrap.yaml run --rm -T dev bash tests/verify-base.sh
-docker compose --env-file .development -f compose/bootstrap.yaml run --rm dev bash
-```
-
-校验预期最后输出 `PASS: frozen Java/Hadoop versions, paths, compiler and Hadoop API loading`。它验证基础环境，不代表集群或应用已完成。`dev` 是一次性开发容器，不启动任何 Hadoop 守护进程，不格式化文件系统，不映射集群端口。
+基础验证通过代表开发环境可用；dev 为一次性开发容器，不启动 Hadoop 守护进程、不格式化文件系统、不映射集群端口。集群与应用由对应成员实现。
 
 ## 目录与负责人
 
