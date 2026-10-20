@@ -39,3 +39,11 @@ Mac 尚未实机验收。三节点、HDFS/YARN、运行模式和两个应用属�
 3. 公共环境有改动时重新构建验证，再更新镜像分发和记录。
 
 版本依据：[Apache Java 兼容说明](https://cwiki.apache.org/confluence/spaces/HADOOP/pages/100827883/Hadoop+Java+Versions)、[Hadoop 3.3.6 官方 SHA512](https://archive.apache.org/dist/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz.sha512)。
+
+## 开工前流程核对（2026-10-20）
+
+已回读 GitHub：目前仅 deep-hang 有仓库写权限，没有待接受邀请；需由组长收齐用户名并邀请成员。公共分支要求组长审核已生效，镜像附件公开可下载；当前未配置自动构建/集群测试。
+
+镜像实际检查：javac、jar 可用，mvn、ssh、sshd 未包含。补齐提交推送、同步上游、服务启动、配置归属、提交容器和联调证据约定；未实现成员模块，也未声称完整集群通过。
+
+主线可继续推进；课程对 Docker/虚拟机的认可、组员本机验收、真实三节点及应用演示仍须分别完成。

@@ -35,3 +35,22 @@
 4. 新增端口、卷、配置和公共接口变化。
 
 组长在干净源码中复现通过后接收。最终用新克隆源码完成集群启动与两个应用演示，才算整体验收通过。
+
+## 联调前避免这几种误判
+
+| 容易卡住的地方 | 负责人和验收方式 |
+| --- | --- |
+| Docker 显示容器已启动，Hadoop 还没就绪 | 2—4 号提供就绪检查与失败日志；HDFS 两个 DataNode、YARN 两个 NodeManager 实际注册后再提交应用 |
+| 进程启动后容器立刻退出，或教程要求 SSH | 按 [公共接口](interfaces.md) 的启动约定实现，不能只在容器里手动改一次 |
+| 命名卷无法写入或重启丢数据 | 2、3 号保证 UID 1000 的权限，持久化 NameNode/DataNode；只对全新目录格式化，普通停止与重启不删卷 |
+| 有两个 Worker，但只在本地运行作业 | 4、6、7 号核对生效的 HDFS/YARN 配置，提供真实 application/job ID 和成功结果 |
+| 数据太少，只看到一个 Worker 处理任务 | 3 号证明数据块分布；4、6、7 号用合适的输入分片与调度设置，记录实际任务所在节点。节点注册截图不能代替两节点参与证据 |
+| 内存不足、任务长期排队、M 系列特别慢 | 2、4 号交付实测的 Docker CPU/内存分配、YARN/任务资源参数及启动等待方式，不凭基础 verify 推断三节点一定可跑 |
+| MergeFile 各人理解不同 | 7 号先按课程材料固定合并规则、是否去重/排序、输出格式，再提交固定输入与预期输出供组长确认 |
+| 单机、伪分布式和完全分布式相互影响 | 5 号使用独立配置、数据卷、Compose 项目及端口；演示时明确启动和停止哪种模式 |
+
+先打通“2 号骨架 → 3 号 HDFS → 4 号 YARN 简单作业”，再接两个应用；5 号可并行开发，6、7 号可先编译和验证局部逻辑。各模块按上游合并通知同步，方法见 [协作规则](contributing.md)。
+
+最终演示前，组长用干净源码按全部步骤复现，记录源码提交号、镜像 ID、配置、输入与预期输出；在演示电脑提前完成下载，不临场依赖首次下载或安装。
+
+运行与分片依据：[Hadoop 官方集群配置](https://hadoop.apache.org/docs/r3.3.6/hadoop-project-dist/hadoop-common/ClusterSetup.html)、[MapReduce 输入与任务说明](https://hadoop.apache.org/docs/r3.3.6/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html)。

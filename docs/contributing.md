@@ -20,15 +20,47 @@
 - compose/bootstrap.yaml 属于 1 号；2 号新建独立集群文件。config/common/、config/hdfs/、config/yarn/ 分别由 1、3、4 号维护，不混写配置。
 - apps/ 和 modes/ 已按模块分开，代码和运行入口仍放原目录；scripts/ 保留公共工具，模块专用脚本放自己的功能目录。
 
+## 开工前：组长邀请成员
+
+1. 收齐 2—7 号的 GitHub 用户名。
+2. 仓库 Settings → Collaborators，按 GitHub 提示添加成员；成员接受邀请后才能向本仓库推送自己的分支。
+3. 新成员先验证环境，再完成一次小改动的提交、推送和 PR，确认整个协作流程可用。没有写权限时不要推送公共分支或借用组长账号。
+
 ## PR 是什么、怎么提交
 
 PR（Pull Request）就是“申请把自己的分支改动合并到公共分支”，提交 PR 不等于已经合并。
 
-1. 在电脑终端、项目根目录提交并推送自己的功能分支；先用 git status 核对只包含自己负责的文件。
-2. 打开 GitHub 仓库的 Pull requests，点击 New pull request。
-3. base 选择 common/phase0-bootstrap，compare 选择自己的 feat/... 分支；在文件列表中核对改动范围。
-4. 点击 Create pull request，写清做了什么、如何运行、测试结果和未完成项，等待组长审核。
-5. 根据反馈在原功能分支修改并推送，原 PR 会自动更新；新增改动后需要重新审核。
+1. 在电脑终端、项目根目录执行 git branch --show-current 和 git status，确认在自己的 feat/... 分支。
+2. 只把本模块文件加入本次提交。下面是 **6 号 WordCount 的示例**，其他成员改用自己的代码、测试和实验材料目录：
+
+```text
+git add apps/wordcount/ tests/wordcount/ docs/modules/wordcount/
+git diff --cached --stat
+git commit -m "feat(wordcount): describe the completed change"
+git push -u origin HEAD
+```
+
+提交说明换成实际完成的内容；发现暂存了无关文件时先调整，不直接提交。第一次 commit 若提示缺少身份，先用 git config user.name 和 git config user.email 设置本仓库的姓名、提交邮箱，再重试。push 按 GitHub 提示认证，403 或 Permission denied 时检查登录账号和邀请是否已接受。
+
+3. 打开 GitHub 仓库的 Pull requests，点击 New pull request。
+4. base 选择 common/phase0-bootstrap，compare 选择自己的 feat/... 分支；在文件列表中核对改动范围。
+5. 点击 Create pull request，写清做了什么、如何运行、测试结果和未完成项，等待组长审核。
+6. 根据反馈在原功能分支修改并推送，原 PR 会自动更新；新增改动后需要重新审核。
+
+## 上游合并后，怎么同步到自己的分支
+
+组长通知公共分支已有需要的模块后，在电脑终端、自己的功能分支中操作：
+
+1. 先提交本地正在做的修改，用 git status 确认工作区干净。
+2. 执行下面命令，把已经合并的上游代码同步进自己的分支：
+
+```text
+git fetch origin
+git merge origin/common/phase0-bootstrap
+```
+
+3. 出现冲突先联系相关负责人，不用 reset --hard 或强推处理；解决后重新验证，最后 git push。
+4. 未合并的上游工作由组长协调联调，不擅自复制另一位成员的整个目录。
 
 ## 组长怎么审核
 
@@ -38,4 +70,8 @@ PR（Pull Request）就是“申请把自己的分支改动合并到公共分支
 
 公共分支启用 PR 审核和代码所有者审核；.github/CODEOWNERS 指定 @deep-hang 为所有文件的审核人。组员不能直接推送公共分支，修改必须经组长批准；新改动会使旧批准失效。禁止普通成员强制推送或删除公共分支。
 
+当前保护仅针对 common/phase0-bootstrap；后续建立 main 时须同步启用同等保护。
+
 仓库所有者保留管理员维护权限；自己的维护变更不能由本人给自己的 PR 审批，必要时可使用所有者维护权限。目录归属仍按模块约定执行，这些规则保护的是合入公共分支的过程。
+
+目前 PR 没有自动构建/集群测试，审核要求只保证有人批准，不保证功能正确；组长仍须核对实际运行记录并按交接命令复现。
