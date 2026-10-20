@@ -70,21 +70,8 @@ git merge origin/main
 
 公共分支启用 PR 审核和代码所有者审核；.github/CODEOWNERS 指定 @deep-hang 为所有文件的审核人。组员不能直接推送公共分支，修改必须经组长批准；新改动会使旧批准失效。禁止普通成员强制推送或删除公共分支。
 
-main 和保留的 common/phase0-bootstrap 均启用上述保护；后续 PR 统一合入 main，旧分支不再作为日常集成入口。
+main 启用上述保护；成员在个人 feat/... 分支开发，PR 统一合入 main。
 
 仓库所有者保留管理员维护权限；自己的维护变更不能由本人给自己的 PR 审批，必要时可使用所有者维护权限。目录归属仍按模块约定执行，这些规则保护的是合入公共分支的过程。
 
 目前 PR 没有自动构建/集群测试，审核要求只保证有人批准，不保证功能正确；组长仍须核对实际运行记录并按交接命令复现。
-
-## 已下载旧分支的成员怎样切换
-
-无需重新克隆或导入镜像。在电脑终端的项目根目录操作：
-
-1. 执行 git status；有修改时先在自己的功能分支提交保存，再继续。
-2. 执行 git fetch origin，获取 main。
-3. 按当前情况选择：
-   - 还在 common/phase0-bootstrap、尚未开始开发：执行 git switch --track origin/main，然后按使用说明创建自己的任务分支。本地 main 已存在时改用 git switch main，再执行 git pull --ff-only。
-   - 已在自己的 feat/... 分支开发：保留该分支，执行 git merge origin/main；如有冲突联系负责人解决，再验证并 git push。
-4. 后续 PR 的 base 选 main，上游同步使用 git merge origin/main。
-
-切换不会删除旧分支；不需要重置、强推或重新下载镜像。

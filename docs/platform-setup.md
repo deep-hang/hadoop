@@ -7,13 +7,12 @@
 [分支用途](#branches) · [Windows](#windows) · [Mac](#mac) · [任务分支](#task-branch) · [每天使用](#daily)
 
 <a id="branches"></a>
-## 先看懂三个分支
+## 分支怎么用
 
 | 分支名称 | 做什么 | 怎么用 |
 | --- | --- | --- |
 | main | 汇总审核通过的正式代码，最终完整项目放这里 | 下载项目、获取全组最新代码；成员通过 PR 合入 |
 | feat/... | 每个人开发、修改和测试自己的模块 | 按下方任务号创建，只提交自己的文件 |
-| common/phase0-bootstrap | 保留前期公共底座记录 | 日常开发无需切到这里 |
 
 **分支是代码版本的名称，不是项目文件夹。** GitHub 文件列表上方的分支下拉框可以切换分支。main 当前包含公共底座，完整项目需等各模块审核合入。
 
@@ -278,6 +277,6 @@ bash scripts/dev.sh shell
 | 找不到 scripts 或 .development | 回到 hadoop 项目根目录执行 |
 | Mac 挂载被拒绝 | 按 Docker 提示允许访问项目目录，再重试 |
 | M 系列出现 exec format error | 确认装的是 Apple 芯片版 Docker，保留项目 linux/amd64 设置，检查 Docker 模拟支持 |
-| 已有项目需要更新 | 在电脑终端检查 git status 和当前分支；工作区干净且在 main 时执行 git pull --ff-only；旧分支切换和功能分支同步按 [协作规则](contributing.md#已下载旧分支的成员怎样切换) 操作，不丢弃本地修改 |
+| 已有项目需要更新 | 在电脑终端检查 git status 和当前分支；工作区干净且在 main 时执行 git pull --ff-only；功能分支同步按 [协作规则](contributing.md#上游合并后怎么同步到自己的分支) 操作，不丢弃本地修改 |
 
 仍失败时，把步骤号、完整命令与报错发给组长，排错时再提供系统和芯片信息。底座已在组长 Windows 上实测，Mac 需按第 7 步完成本机验收。
