@@ -5,6 +5,7 @@ from pathlib import Path
 import base64
 import json
 import tempfile
+import subprocess
 import threading
 import time
 import unittest
@@ -16,7 +17,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'modes/standalone'))
 from console_store import reserve, atomic_json, write_counts
 from web import make_server
-from web_core import ApiError, Manager, ServerLock
+from web_core import ApiError, Manager, ServerLock, cleanup_owned_client
+from console_backend import Backend
 
 
 class WebTests(unittest.TestCase):
@@ -116,6 +118,20 @@ class WebTests(unittest.TestCase):
         deadline=time.monotonic()+3
         while self.manager.active and time.monotonic()<deadline:time.sleep(.05)
         self.assertEqual(self.manager.task('orphan')['status'],'interrupted')
+
+    def test_cleanup_distinguishes_missing_unreachable_and_foreign_container(self):
+        backend=Backend()
+        with patch('web_core.subprocess.run',return_value=subprocess.CompletedProcess([],1,b'[]',b'No such object: owned')) as run:
+            cleanup_owned_client(backend,'owned','pseudo','token');self.assertEqual(run.call_count,1)
+        with patch('web_core.subprocess.run',return_value=subprocess.CompletedProcess([],1,b'',b'Cannot connect to Docker engine')):
+            with self.assertRaises(RuntimeError):cleanup_owned_client(backend,'owned','pseudo','token')
+        foreign=json.dumps([dict(Config=dict(Labels={'com.docker.compose.project':'other'}))]).encode()
+        with patch('web_core.subprocess.run',return_value=subprocess.CompletedProcess([],0,foreign,b'')) as run:
+            with self.assertRaises(RuntimeError):cleanup_owned_client(backend,'owned','pseudo','token')
+            self.assertEqual(run.call_count,1)
+        owned=json.dumps([dict(Config=dict(Labels={'com.docker.compose.project':backend.projects['pseudo'],'member5.console.invocation':'token'}))]).encode()
+        with patch('web_core.subprocess.run',side_effect=[subprocess.CompletedProcess([],0,owned,b''),subprocess.CompletedProcess([],0,b'owned',b'')]) as run:
+            cleanup_owned_client(backend,'owned','pseudo','token');self.assertEqual(run.call_count,2)
 
     def test_static_page_no_external_dependencies(self):
         for path in ['/','/app.js','/style.css']:

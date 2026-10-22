@@ -36,6 +36,23 @@ def bounded(path, parent):
     return path
 
 
+def cleanup_owned_client(backend, name, mode, token):
+    """A missing container is success; an unreachable engine is unverified cleanup."""
+    def missing(result):
+        message = result.stderr.decode('utf-8', errors='replace').lower()
+        return 'no such object:' in message or 'no such container:' in message
+    info = subprocess.run(['docker', 'inspect', name], capture_output=True, env=backend.env, timeout=15)
+    if info.returncode:
+        if missing(info): return
+        raise RuntimeError('无法连接 Docker 或核验临时容器，不能确认清理完成：' + name)
+    labels = json.loads(info.stdout)[0]['Config'].get('Labels') or {}
+    if labels.get('com.docker.compose.project') != backend.projects[mode] or labels.get('member5.console.invocation') != token:
+        raise RuntimeError('临时容器归属不符，拒绝清理：' + name)
+    result = subprocess.run(['docker', 'stop', '--time', '10', name], capture_output=True, env=backend.env, timeout=20)
+    if result.returncode and not missing(result):
+        raise RuntimeError('临时容器停止失败：' + name + '\n' + result.stderr.decode('utf-8', errors='replace'))
+
+
 class ServerLock:
     def __init__(self, root):
         root = Path(root); root.mkdir(parents=True, exist_ok=True)
@@ -118,7 +135,7 @@ class Manager:
                             backend = Backend(projects=self.projects, environment=self.environment)
                             for client in state.get('clients', []):
                                 try:
-                                    backend.cleanup_client(client['name'], client['mode'], client['token'])
+                                    cleanup_owned_client(backend, client['name'], client['mode'], client['token'])
                                 except Exception as exc:
                                     errors.append(str(exc))
                             state.update(status='failed' if errors else 'interrupted', ended=now(),

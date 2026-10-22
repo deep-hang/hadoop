@@ -14,6 +14,7 @@ import uuid
 from console import Console
 from console_backend import Backend
 from console_store import atomic_json, now
+from web_core import cleanup_owned_client
 
 
 class WebBackend(Backend):
@@ -67,7 +68,7 @@ class WebBackend(Backend):
         previous = self.cancel_enabled
         self.cancel_enabled = False
         try:
-            super().cleanup_client(name, mode, token)
+            cleanup_owned_client(self, name, mode, token)
         finally:
             self.cancel_enabled = previous
 
