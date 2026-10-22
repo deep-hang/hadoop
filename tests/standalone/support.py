@@ -46,9 +46,18 @@ class Suite:
         start = time.monotonic()
         path = self.report / f'{self.sequence:03d}.log'
         try:
-            result = subprocess.run([str(x) for x in args], cwd=cwd or ROOT, env=self.env,
-                                    input=input, capture_output=True, text=True,
-                                    encoding='utf-8', errors='replace', timeout=timeout)
+            if input is None:
+                result = subprocess.run([str(x) for x in args], cwd=cwd or ROOT, env=self.env,
+                                        capture_output=True, text=True,
+                                        encoding='utf-8', errors='replace', timeout=timeout)
+            else:
+                # Windows text-mode stdin translates LF to CRLF. Preserve exact
+                # bytes when restoring Hadoop output during corruption tests.
+                payload = input.encode('utf-8') if isinstance(input, str) else input
+                result = subprocess.run([str(x) for x in args], cwd=cwd or ROOT, env=self.env,
+                                        input=payload, capture_output=True, timeout=timeout)
+                result.stdout = result.stdout.decode('utf-8', errors='replace').replace('\r\n', '\n')
+                result.stderr = result.stderr.decode('utf-8', errors='replace').replace('\r\n', '\n')
         except subprocess.TimeoutExpired as error:
             path.write_text(str(args) + '\nTIMEOUT\n' + str(error.stdout) + str(error.stderr), encoding='utf-8')
             raise
