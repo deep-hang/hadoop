@@ -17,7 +17,14 @@ trap 'rm -f -- "$expected"' EXIT
 m5_counts "file://${2:-$M5_STANDALONE/input}" > "$expected"
 hdfs dfs -mkdir -p /project/input/member5 /project/output/member5
 hdfs dfs -mkdir "$input"
-for file in "${M5_FILES[@]}"; do hdfs dfs -put "$file" "$input/$(basename -- "$file")"; done
+source_input="${2:-$M5_STANDALONE/input}"
+if [[ -d "$source_input" ]]; then
+    # Let Hadoop expand filenames itself: raw CLI paths containing spaces can
+    # be reinterpreted as globs. This pattern also excludes hidden entries.
+    hdfs dfs -put "$source_input/[^._]*" "$input/"
+else
+    hdfs dfs -put "$source_input" "$input/member5-input"
+fi
 hadoop jar "$HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar" \
     wordcount "$input" "$output"
 bash "$M5_ROOT/modes/pseudo/verify.sh" "$1"

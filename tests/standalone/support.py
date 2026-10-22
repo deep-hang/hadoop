@@ -183,6 +183,9 @@ def custom_input_checks(suite):
     expected = {'Apple': 2, 'apple': 3, '你好': 1, '世界': 2, 'punct,': 2}
     actual = read_result(many)
     require(parse(actual) == expected, 'Custom multi-file known answer differs')
+    if suite.mode == 'pseudo':
+        uploaded = suite.inside('hdfs', 'dfs', '-count', f'/project/input/member5/{many}').stdout.split()
+        require(int(uploaded[1]) == 2, 'Hidden files must not be uploaded')
     require(tree_digest(folder) == original, 'Read-only source input was changed')
     suite.mark('custom directory: Unicode/spaces, multi-file, BOM/CRLF, tabs/form-feed, case/punctuation and hidden files')
     saved = (folder / 'first 中文.txt').read_bytes()
