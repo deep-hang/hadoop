@@ -8,7 +8,7 @@ import time
 import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'standalone'))
-from support import ROOT, Suite, require
+from support import ROOT, Suite, custom_input_checks, require
 
 
 def main():
@@ -70,9 +70,11 @@ def main():
         require(suite.inside('hdfs', 'dfs', '-cat', '/project/output/member5/sample/part-r-*').stdout == output,
                 'Repeated job changed old data')
         suite.mark('HDFS mkdir/put/ls/cat, local MapReduce and existing-path protection')
+        custom_id = custom_input_checks(suite)
         suite.compose('restart', 'pseudo', timeout=120)
         suite.compose('up', '-d', '--no-build', '--wait', '--wait-timeout', '180', 'pseudo', timeout=210)
         suite.inside('bash', '/workspace/modes/pseudo/verify.sh', run_id)
+        suite.inside('bash', '/workspace/modes/pseudo/verify.sh', custom_id)
         require(suite.inside('cat', '/var/lib/hadoop/hdfs/namenode/current/VERSION').stdout == version, 'Restart changed metadata')
         require(suite.inside('hdfs', 'dfs', '-cat', '/project/input/member5/sample/sample.txt').stdout == source, 'Restart lost input')
         suite.mark('restart preserves input, output and cluster metadata')
@@ -90,6 +92,7 @@ def main():
         suite.mark('occupied Web port rejected without disturbing its owner')
         suite.compose('up', '-d', '--no-build', '--wait', '--wait-timeout', '180', 'pseudo', timeout=210)
         suite.inside('bash', '/workspace/modes/pseudo/verify.sh', run_id)
+        suite.inside('bash', '/workspace/modes/pseudo/verify.sh', custom_id)
         require(suite.inside('cat', '/var/lib/hadoop/hdfs/namenode/current/VERSION').stdout == version, 'Recreation changed metadata')
         require(suite.inside('hdfs', 'dfs', '-cat', '/project/input/member5/sample/sample.txt').stdout == source, 'Recreation lost input')
         suite.mark('container recreation preserves input, output and cluster metadata')

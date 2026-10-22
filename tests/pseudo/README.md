@@ -34,6 +34,8 @@ python3 tests/pseudo/check-pseudo.py
 10. 只在测试容器终止 DataNode，容器清理另一服务并以非零退出，排除 OOM。
 11. 限定资源清理与其他项目资源前后对照。
 
+还通过 tools profile 的临时 client 和真实只读宿主机挂载测试自定义单文件/多文件目录、中文/空格路径、BOM/CRLF、空文本、输入快照和结果篡改；期望值在 Python 测试中独立列出，不使用运行时参考计算作为测试答案。自定义结果也经历 restart 和 down/up 持久化验证。临时客户端会自动移除，常驻 DataNode 数仍为 1。
+
 测试复用成员 5 的 `tests/standalone/support.py`，因此运行时保留完整仓库。两种模式测试顺序执行。
 
 ## 隔离与日志

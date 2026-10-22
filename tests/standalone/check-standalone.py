@@ -2,7 +2,7 @@
 from pathlib import Path
 import json
 import re
-from support import ROOT, Suite, require, tree_digest
+from support import ROOT, Suite, custom_input_checks, require, tree_digest
 
 
 def main():
@@ -48,6 +48,7 @@ def main():
         marker.touch()
         suite.inside('bash', '/workspace/modes/standalone/verify.sh', run_id)
         suite.mark('success marker is required')
+        custom_input_checks(suite)
         suite.wrapper_checks()
         success = True
     except Exception as exception:

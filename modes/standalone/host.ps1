@@ -2,6 +2,7 @@ param(
     [string]$Mode,
     [string]$Action = 'doctor',
     [string]$RunId = '',
+    [string]$InputPath = '',
     [Parameter(ValueFromRemainingArguments=$true)][string[]]$Extra
 )
 $ErrorActionPreference = 'Stop'
@@ -9,12 +10,13 @@ $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $actions = @('doctor', 'run', 'verify', 'shell', 'test')
 if ($Mode -eq 'pseudo') { $actions += @('init', 'up', 'status', 'logs', 'restart', 'stop', 'down') }
 if ($Mode -notin @('standalone', 'pseudo') -or $Action -notin $actions -or $Extra.Count -gt 0) {
-    Write-Output 'Usage: manage.ps1 <doctor|run|verify|shell|test|init|up|status|logs|restart|stop|down> [run-id]'
+    Write-Output 'Usage: manage.ps1 <action> [run-id] [input-file-or-directory (run only)]'
     exit 2
 }
 if ($Action -in @('run', 'verify')) {
     if ($RunId -cnotmatch '^[a-zA-Z0-9_-]+$') { Write-Output 'Invalid or missing run-id.'; exit 2 }
 } elseif ($RunId) { Write-Output 'Unexpected run-id.'; exit 2 }
+if ($InputPath -and $Action -ne 'run') { Write-Output 'An input path is only valid with run.'; exit 2 }
 $project = "hadoop-m5-$Mode"
 $compose = @('compose', '--env-file', (Join-Path $repo '.development'), '-f',
     (Join-Path $repo "modes/$Mode/compose.yaml"), '-p', $project)
@@ -22,6 +24,7 @@ $runtime = Join-Path $repo 'runtime/member5'
 New-Item -ItemType Directory -Force (Join-Path $runtime 'standalone') | Out-Null
 New-Item -ItemType Directory -Force (Join-Path $runtime "$Mode/control") | Out-Null
 $log = Join-Path $runtime ("$Mode/control/" + [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfff') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8) + '.log')
+$previousInputPath = $env:M5_INPUT_PATH
 
 function Invoke-M5Docker([string[]]$DockerArgs) {
     # Windows PowerShell reports native stderr as ErrorRecords even on success.
@@ -42,6 +45,10 @@ function Wait-M5Pseudo {
     }
 }
 try {
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    $OutputEncoding = [Console]::OutputEncoding
+    if ($InputPath) { $env:M5_INPUT_PATH = (Resolve-Path -LiteralPath $InputPath).ProviderPath }
+    else { $env:M5_INPUT_PATH = Join-Path $repo 'modes/standalone/input' }
     if ($Action -eq 'test') {
         $python = Get-Command python3,python -ErrorAction SilentlyContinue | Where-Object { $_.Source -notlike '*WindowsApps*' } | Select-Object -First 1
         if (-not $python) { throw 'Python 3 is required only for automated tests.' }
@@ -59,8 +66,8 @@ try {
             Write-Output "DOCTOR_PASS mode=$Mode project=$project"
         }
         run {
-            if ($Mode -eq 'standalone') { Invoke-M5Compose @('run', '--rm', '-T', '--no-deps', 'standalone', 'bash', '/workspace/modes/standalone/run.sh', $RunId) }
-            else { Invoke-M5Compose @('exec', '-T', 'pseudo', 'bash', '/workspace/modes/pseudo/run.sh', $RunId) }
+            if ($Mode -eq 'standalone') { Invoke-M5Compose @('run', '--rm', '-T', '--no-deps', 'standalone', 'bash', '/workspace/modes/standalone/run.sh', $RunId, '/member5-input') }
+            else { Invoke-M5Compose @('run', '--rm', '-T', '--no-deps', 'client', 'bash', '/workspace/modes/pseudo/run.sh', $RunId, '/member5-input') }
         }
         verify {
             if ($Mode -eq 'standalone') { Invoke-M5Compose @('run', '--rm', '-T', '--no-deps', 'standalone', 'bash', '/workspace/modes/standalone/verify.sh', $RunId) }
@@ -93,4 +100,6 @@ try {
 } catch {
     Write-Output "FAIL: $($_.Exception.Message)"
     exit 1
+} finally {
+    $env:M5_INPUT_PATH = $previousInputPath
 }

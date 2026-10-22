@@ -68,6 +68,19 @@ class Suite:
             return self.compose('exec', '-T', 'pseudo', *args, **kwargs)
         return self.compose('run', '--rm', '-T', '--no-deps', 'standalone', *args, **kwargs)
 
+    def custom_run(self, run_id, source, **kwargs):
+        previous = self.env.get('M5_INPUT_PATH')
+        self.env['M5_INPUT_PATH'] = str(source.resolve())
+        try:
+            service = 'standalone' if self.mode == 'standalone' else 'client'
+            return self.compose('run', '--rm', '-T', '--no-deps', service, 'bash',
+                                f'/workspace/modes/{self.mode}/run.sh', run_id, '/member5-input', **kwargs)
+        finally:
+            if previous is None:
+                self.env.pop('M5_INPUT_PATH', None)
+            else:
+                self.env['M5_INPUT_PATH'] = previous
+
     def fail(self, result, text):
         require(result.returncode != 0, 'Failure scenario returned success')
         require(text in result.stdout + result.stderr, 'Expected error missing: ' + text)
@@ -142,3 +155,81 @@ class Suite:
 def tree_digest(folder):
     return {str(p.relative_to(folder)): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in folder.rglob('*') if p.is_file()}
+
+
+def custom_input_checks(suite):
+    """Independent known answers exercise inputs through real read-only host binds."""
+    folder = suite.report / 'custom input 空格'
+    folder.mkdir()
+    (folder / 'first 中文.txt').write_bytes(b'\xef\xbb\xbf' + 'Apple apple apple\r\n你好 世界\r\npunct, punct,\r\n'.encode('utf-8'))
+    (folder / 'second.txt').write_text('apple\tApple\f世界\n\n', encoding='utf-8')
+    (folder / '.ignored.txt').write_text('ignored', encoding='utf-8')
+    (folder / '_ignored.txt').write_text('ignored', encoding='utf-8')
+    original = tree_digest(folder)
+    many = suite.project + '-many'
+    suite.custom_run(many, folder)
+
+    def read_result(run_id):
+        if suite.mode == 'standalone':
+            output = ROOT / f'runtime/member5/standalone/{run_id}/output'
+            return ''.join(p.read_text(encoding='utf-8') for p in sorted(output.glob('part-r-*')))
+        return suite.inside('hdfs', 'dfs', '-cat', f'/project/output/member5/{run_id}/part-r-*').stdout
+
+    def parse(text):
+        entries = [line.split('\t') for line in text.splitlines()]
+        require(len(entries) == len({entry[0] for entry in entries}), 'Duplicate result words')
+        return {word: int(count) for word, count in entries}
+
+    expected = {'Apple': 2, 'apple': 3, '你好': 1, '世界': 2, 'punct,': 2}
+    actual = read_result(many)
+    require(parse(actual) == expected, 'Custom multi-file known answer differs')
+    require(tree_digest(folder) == original, 'Read-only source input was changed')
+    suite.mark('custom directory: Unicode/spaces, multi-file, BOM/CRLF, tabs/form-feed, case/punctuation and hidden files')
+    saved = (folder / 'first 中文.txt').read_bytes()
+    (folder / 'first 中文.txt').write_text('source changed after job\n', encoding='utf-8')
+    try:
+        suite.inside('bash', f'/workspace/modes/{suite.mode}/verify.sh', many)
+        require(read_result(many) == actual, 'Source edit changed saved result')
+    finally:
+        (folder / 'first 中文.txt').write_bytes(saved)
+    suite.mark('verification uses saved input after source changes')
+    if suite.mode == 'standalone':
+        part = next((ROOT / f'runtime/member5/standalone/{many}/output').glob('part-r-*'))
+        original_part = part.read_bytes()
+        part.write_text('wrong\t999\n', encoding='utf-8')
+        try:
+            suite.fail(suite.inside('bash', '/workspace/modes/standalone/verify.sh', many, check=False), 'RESULT_MISMATCH')
+        finally:
+            part.write_bytes(original_part)
+    else:
+        target = f'/project/output/member5/{many}/part-r-00000'
+        suite.inside('hdfs', 'dfs', '-put', '-f', '-', target, input='wrong\t999\n')
+        try:
+            suite.fail(suite.inside('bash', '/workspace/modes/pseudo/verify.sh', many, check=False), 'RESULT_MISMATCH')
+        finally:
+            suite.inside('hdfs', 'dfs', '-put', '-f', '-', target, input=actual)
+    suite.mark('custom-output corruption is rejected using independent input counts')
+    single = suite.report / 'single input.txt'
+    single.write_text('Solo solo\nsolo\r\n', encoding='utf-8')
+    one = suite.project + '-single'
+    suite.custom_run(one, single)
+    require(parse(read_result(one)) == {'Solo': 1, 'solo': 2}, 'Single-file known answer differs')
+    suite.mark('custom single text file')
+    empty = suite.report / 'empty.txt'
+    empty.touch()
+    zero = suite.project + '-empty'
+    suite.custom_run(zero, empty)
+    require(read_result(zero) == '', 'Empty file should produce zero words')
+    suite.mark('empty text file produces an empty successful result')
+    suite.fail(suite.custom_run(many, folder, check=False), 'already exists')
+    require(read_result(many) == actual, 'Repeated custom job changed old output')
+    suite.mark('custom input repeated-ID protection')
+    nested = suite.report / 'nested-input'
+    (nested / 'child').mkdir(parents=True)
+    suite.fail(suite.custom_run(suite.project + '-nested', nested, check=False), 'Nested input directories')
+    invalid = suite.report / 'invalid.txt'
+    invalid.write_bytes(b'\xff')
+    result = suite.custom_run(suite.project + '-invalid', invalid, check=False)
+    require(result.returncode != 0, 'Invalid UTF-8 returned success')
+    suite.mark('nested directories and invalid UTF-8 are rejected')
+    return many

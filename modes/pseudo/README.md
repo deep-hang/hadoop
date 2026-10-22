@@ -30,9 +30,31 @@ bash modes/pseudo/manage.sh verify demo-001
 
 `up` 最多等待 180 秒，检查两个服务存活、恰好 1 个 Live DataNode、安全模式关闭以及 HDFS 根目录可访问。失败保存并输出诊断，不因容器显示 Up 就判定成功。
 
-预期 `status` 显示 NameNode、DataNode，`Live datanodes (1):`、`Safe mode is OFF`；作业显示 `RESULT_PASS hadoop=1 hello=2` 和 `job_local...`。访问 [NameNode Web](http://127.0.0.1:19870/) 查看节点，Web 页中容器内部名称仅供容器网络使用。
+预期 `status` 显示 NameNode、DataNode，`Live datanodes (1):`、`Safe mode is OFF`；默认作业显示实际词频、`RESULT_PASS distinct_words=2 total_words=3` 和 `job_local...`。访问 [NameNode Web](http://127.0.0.1:19870/) 查看节点，Web 页中容器内部名称仅供容器网络使用。
 
 固定输入复用成员 5 的 `modes/standalone/input/sample.txt`。本次输入位于 HDFS `/project/input/member5/demo-001/sample.txt`，结果位于 `/project/output/member5/demo-001/`。已有输入或输出时拒绝重复运行；下一次使用 `demo-002` 等新 ID。
+
+## 使用自己的文本
+
+HDFS 已通过 up 启动后，使用 `run <run-id> [宿主机输入文件或目录]`。相对路径按当前目录解释，路径含空格/中文时加引号；不传路径仍使用默认样例。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\modes\pseudo\manage.ps1 run own-001 "D:\data\my-text.txt"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\modes\pseudo\manage.ps1 run own-002 "D:\data\my texts"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\modes\pseudo\manage.ps1 verify own-001
+```
+
+```bash
+bash modes/pseudo/manage.sh run own-001 "/path/to/my-text.txt"
+bash modes/pseudo/manage.sh run own-002 "/path/to/my texts"
+bash modes/pseudo/manage.sh verify own-001
+```
+
+输入规则与[单机模式](../standalone/README.md#使用自己的文本)相同：UTF-8 纯文本、支持 BOM/CRLF，目录不递归并忽略隐藏条目，按空白分词、区分大小写及标点。空文件生成空结果。终端打印实际词频和不同词数/总词数。
+
+自定义输入只读挂载到临时 `client` 容器，由其上传到本次 HDFS 输入目录并执行本地 MapReduce；容器执行后自动移除，不重建或改动运行中的 HDFS 服务。常驻 HDFS 仍只有 1 个容器、1 个 DataNode；没有 YARN 或新增 Worker。客户端与服务使用本项目独立网络，不挂载 HDFS 数据卷，资源上限为 1 CPU/1 GiB；服务仍为 2 CPU/2 GiB。作业期间两者合计上限 3 CPU/3 GiB。
+
+verify 从已保存的 HDFS 输入独立计算预期词频，再与实际输出比较，原始文件之后修改也不影响旧作业验证。目录内文件名保留；单文件上传后名为 `member5-input`，可在容器 shell 用 `hdfs dfs -ls /project/input/member5/own-001` 查看。
 
 ## 进入、重启、停止与恢复
 

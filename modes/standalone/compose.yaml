@@ -14,4 +14,10 @@ services:
       - ../../runtime/member5/standalone:/workspace/runtime/member5/standalone
       - ./conf/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
       - ./conf/mapred-site.xml:/opt/hadoop/etc/hadoop/mapred-site.xml:ro
+      - type: bind
+        source: ${M5_INPUT_PATH:-./input}
+        target: /member5-input
+        read_only: true
+        bind:
+          create_host_path: false
     command: [bash]

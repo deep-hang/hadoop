@@ -9,6 +9,16 @@ shopt -s nullglob
 parts=("$output"/part-r-*)
 [[ ${#parts[@]} -gt 0 ]] || { echo 'No result parts.' >&2; exit 1; }
 actual="$(mktemp)"
-trap 'rm -f -- "$actual"' EXIT
+expected="$(mktemp)"
+trap 'rm -f -- "$actual" "$expected"' EXIT
 cat -- "${parts[@]}" > "$actual"
-m5_compare "$actual"
+run="${output%/output}"
+if [[ -d "$run/input" ]]; then
+    m5_counts "file://$run/input" > "$expected"
+elif [[ -f "$run/config.log" ]] && grep -Fx "Input=$M5_STANDALONE/input" "$run/config.log" >/dev/null; then
+    # Compatibility with fixed-sample runs produced before input snapshots existed.
+    cp -- "$M5_STANDALONE/expected.tsv" "$expected"
+else
+    echo 'Missing saved input snapshot.' >&2; exit 1
+fi
+m5_compare "$actual" "$expected"

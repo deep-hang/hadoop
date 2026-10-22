@@ -30,11 +30,11 @@
 5. 两套自动测试顺序运行，测试证据保存在各自随机目录。
 6. 结束时对伪分布式执行 down，保留命名卷供之后恢复。单机输出保留在 runtime/member5/。
 
-两个模式固定输入均为 `hello hadoop\nhello\n`；唯一预期为 hadoop=1、hello=2。ID 不能包含路径分隔符，已有 ID 明确失败，旧数据不自动删除。
+两个模式的默认输入均为 `hello hadoop\nhello\n`，固定回归预期为 hadoop=1、hello=2。也支持 `run <run-id> [宿主机文本文件或目录]`；省略路径保持默认行为，自定义输入的预期由保存的本次输入独立计算。ID 不能包含路径分隔符，已有 ID 明确失败，旧数据不自动删除。
 
 ## 验证记录
 
-首轮实现验证已通过：
+最初固定样例版本（自定义输入扩展之前）的实现验证已通过：
 
 | 验证 | 实测结果 | 本机证据（runtime 不提交） |
 | --- | --- | --- |
@@ -60,7 +60,13 @@
 
 伪分布式健康运行期间一次 `docker stats` 采样为 547.4 MiB / 2 GiB；这是单次观测，不代表峰值。两个资源上限与单机上限均由测试检查。新 Bash 脚本语法检查、Python 编译检查、模块文档链接检查均通过。
 
-最终记录提交仅补充本文，运行源码 SHA-256 与上述干净副本测试记录逐一核对。复验副本和完整日志在本机忽略目录保留，便于用户核验。
+上述复验对应初版固定样例源码。自定义输入扩展后的测试单独记录，不能用初版测试代替新版验证。复验副本和完整日志在本机忽略目录保留，便于用户核验。
+
+### 自定义输入扩展
+
+新增 InputCounts.java，以独立的流式读取和计数核对实际 Hadoop WordCount 输出。分词规则与 Hadoop 3.3.6 的 [WordCount 源码](https://github.com/apache/hadoop/blob/rel/release-3.3.6/hadoop-mapreduce-project/hadoop-mapreduce-examples/src/main/java/org/apache/hadoop/examples/WordCount.java)一致，支持其 [UTF-8 BOM 处理](https://github.com/apache/hadoop/blob/rel/release-3.3.6/hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-core/src/main/java/org/apache/hadoop/mapreduce/lib/input/LineRecordReader.java)。输入限定为 UTF-8 纯文本；目录不递归。动态校验不代替固定回归测试，测试对自定义数据另列固定答案。
+
+单机保存 runtime 下的输入副本；伪分布式保存 HDFS 输入，借助只读挂载的临时 client 接收宿主机文件，无需重新挂载 HDFS 服务。临时 client 为 1 CPU/1 GiB，服务保持 2 CPU/2 GiB、一个 DataNode；客户端退出自动移除。普通输出保护、数据卷及成员目录边界保持原有规则。
 
 文件范围审计可在电脑终端复验：
 
