@@ -85,6 +85,14 @@ class WebTests(unittest.TestCase):
         record['reports']=[dict(path=str(ROOT/'.development'))];atomic_json(folder/'record.json',record)
         self.assertEqual(self.http('/api/download?mode=standalone&id=many&kind=report')[0],400)
 
+    def test_missing_result_is_distinct_from_successful_empty_result(self):
+        folder,_=reserve('standalone','empty-result',self.manager.home)
+        missing=self.http('/api/counts?mode=standalone&id=empty-result')[1]
+        self.assertFalse(missing['available']);self.assertIsNone(missing['total_words'])
+        (folder/'result.tsv').write_text('',encoding='utf-8')
+        empty=self.http('/api/counts?mode=standalone&id=empty-result')[1]
+        self.assertTrue(empty['available']);self.assertEqual(empty['total_words'],0)
+
     def test_corrupt_record_does_not_hide_other_history(self):
         good, _=reserve('standalone','good',self.manager.home)
         bad, _=reserve('standalone','bad',self.manager.home);(bad/'record.json').write_text('broken')

@@ -323,12 +323,13 @@ class Manager:
 
     def counts(self, mode, identifier, query='', sort='count', page=1):
         path = bounded(location(mode, identifier, self.home) / 'result.tsv', self.home)
-        counts = parse_counts(path.read_text(encoding='utf-8')) if path.exists() else {}
+        available = path.is_file()
+        counts = parse_counts(path.read_text(encoding='utf-8')) if available else {}
         rows = ordered(counts) if sort == 'count' else sorted(counts.items())
         rows = [(word, count) for word, count in rows if query.casefold() in word.casefold()]
         pages = max(1, (len(rows) + 49) // 50); page = min(max(1, page), pages)
-        return dict(rows=rows[(page-1)*50:page*50], matched=len(rows), total=len(counts), page=page, pages=pages,
-                    total_words=sum(counts.values()), top_words=ordered(counts)[:20])
+        return dict(available=available, rows=rows[(page-1)*50:page*50], matched=len(rows), total=len(counts) if available else None, page=page, pages=pages,
+                    total_words=sum(counts.values()) if available else None, top_words=ordered(counts)[:20])
 
     def input_preview(self, mode, identifier):
         folder = bounded(location(mode, identifier, self.home) / 'input', self.home)
