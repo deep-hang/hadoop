@@ -45,7 +45,22 @@
 | 公共回归 | 7 项契约检查和公共 verify 通过，含 `BASE_API_PASS` | 公共验证输出 |
 | 文件保护 | 79 个原文件中，仅授权的 5 份 README 改变；其余 74 个字节一致 | `runtime/member5/scope-audit.json` |
 
-每次自动测试的 `result.json` 包含实际 passed、检查清单、源码 SHA-256、镜像 ID 和基线提交号。Windows/Git Bash 已实测；原生 Mac、Apple 芯片模拟环境尚未实机验证，不能由本机结果替代。干净源码副本复验结果另附在本节下方。
+每次自动测试的 `result.json` 包含实际 passed、检查清单、源码 SHA-256、镜像 ID 和基线提交号。Windows/Git Bash 已实测；原生 Mac、Apple 芯片模拟环境尚未实机验证，不能由本机结果替代。
+
+### 干净源码复验
+
+从本地已提交的 `af4274db57448cd1821aaccf344f0ec5d5be4813` 创建全新克隆 `runtime/member5/repro-final/`，确认工作区干净、不含原目录运行数据，再通过克隆中的宿主机入口顺序执行测试：
+
+| 入口 | 实测结果 | 克隆目录内证据 |
+| --- | --- | --- |
+| Git Bash `modes/standalone/manage.sh test` | passed=true，11 项检查通过 | `runtime/member5/tests/hadoop-m5-standalone-test-a4419a8277/result.json` |
+| PowerShell `modes/pseudo/manage.ps1 test` | passed=true，13 项检查通过 | `runtime/member5/tests/hadoop-m5-pseudo-test-24007bcc0c/result.json` |
+
+两套测试均使用随机独立项目，退出后测试容器、网络、卷全部清理；原有其他项目保留。本轮结束时正常伪分布式环境也已 down，演示卷及 `impl-001` 的 HDFS 输入/输出保留，使用正常入口 up 后可 verify。单机 `impl-001` 的输出保留在原源码目录 runtime 中。
+
+伪分布式健康运行期间一次 `docker stats` 采样为 547.4 MiB / 2 GiB；这是单次观测，不代表峰值。两个资源上限与单机上限均由测试检查。新 Bash 脚本语法检查、Python 编译检查、模块文档链接检查均通过。
+
+最终记录提交仅补充本文，运行源码 SHA-256 与上述干净副本测试记录逐一核对。复验副本和完整日志在本机忽略目录保留，便于用户核验。
 
 文件范围审计可在电脑终端复验：
 
@@ -69,6 +84,10 @@ python tests/standalone/check-scope.py edab708
 
 ## 提交与审核
 
-只提交成员 5 的两种模式、两套测试及本目录材料。原有文件仅五个 README 属于授权修改；其余原文件按基线逐一 SHA-256 核对。提交后从干净源码目录复验，再推送 `SgRpg/hadoop:feat/standalone-pseudo` 并向 `deep-hang/hadoop:main` 提 PR，组长复验、审核和合并。
+只提交成员 5 的两种模式、两套测试及本目录材料。原有文件仅五个 README 属于授权修改；其余原文件按基线逐一 SHA-256 核对。
+
+**当前状态：仅本地开发和提交，尚未推送分支、尚未创建 PR。按用户要求，须由用户先核验并明确同意，再推送 `SgRpg/hadoop:feat/standalone-pseudo`，之后向 `deep-hang/hadoop:main` 提 PR，由组长复验、审核和合并。**
+
+用户可先按两个模式 README 自行运行，或从 Git 查看本地功能分支相对 `edab708` 的文件差异；也可查看上述自动测试 JSON 和文件范围审计报告。
 
 参考：[Hadoop 3.3.6 单节点文档](https://hadoop.apache.org/docs/r3.3.6/hadoop-project-dist/hadoop-common/SingleCluster.html)。保留独立卷的行为见 [Docker 卷说明](https://docs.docker.com/engine/storage/volumes/)。
