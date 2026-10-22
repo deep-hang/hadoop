@@ -14,8 +14,9 @@ root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 mkdir -p "$root/runtime/member5/standalone" "$root/runtime/member5/$mode/control"
 log="$root/runtime/member5/$mode/control/$(date -u +%Y%m%dT%H%M%S)-$$-$RANDOM.log"
 if [[ "$action" == test ]]; then
-    if command -v python3 >/dev/null; then python3 "$root/tests/$mode/check-$mode.py"
-    else python "$root/tests/$mode/check-$mode.py"; fi
+    python_bin=python3
+    case "$(command -v python3 || true)" in ''|*WindowsApps*) python_bin=python ;; esac
+    "$python_bin" "$root/tests/$mode/check-$mode.py"
     exit $?
 fi
 cli_root="$root"
