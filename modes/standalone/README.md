@@ -1,5 +1,11 @@
 # 5 号：单机模式
 
+## 新增统一菜单与结果报告
+
+需要 Python 3.10+，无第三方包。在项目根目录执行 `powershell -NoProfile -ExecutionPolicy Bypass -File .\modes\standalone\console.ps1`；Windows 也可双击本目录 `console.cmd`，Mac/Linux 或 Git Bash 使用 `bash modes/standalone/console.sh`。
+
+新入口支持中文菜单、自动 ID、自定义输入、运行摘要、双模式对照、历史复验、HDFS 快捷查看及离线 HTML 报告。完整操作与边界见[统一入口说明](../../docs/modules/standalone-pseudo/CONSOLE.md)。本页下方原 `manage` 入口继续可用，基础运行仍只需要 Docker；增强功能需显式使用新入口。
+
 使用 `hadoop-base:v0.1`、Java `1.8.0_442`、Hadoop `3.3.6`，显式加载本目录配置，以本地文件系统和本地 MapReduce 执行官方 WordCount。没有常驻 HDFS/YARN 服务。本入口独立于公共 `scripts/dev.*`，也不依赖其他成员的集群。
 
 ## 在电脑终端运行

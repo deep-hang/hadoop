@@ -6,6 +6,8 @@ import concurrent.futures
 import io
 import json
 import tempfile
+import shutil
+import subprocess
 import unittest
 from unittest.mock import patch
 
@@ -108,6 +110,22 @@ class ConsoleTests(unittest.TestCase):
             store.load('standalone', 'sample', self.root)
         self.assertFalse(list(folder.glob('*.tmp')))
 
+    def test_atomic_replace_retries_transient_sharing_lock(self):
+        path = self.root / 'record.json'
+        store.atomic_json(path, {'old': True})
+        replace = store.os.replace
+        attempts = []
+        def locked(source, target):
+            attempts.append(1)
+            if len(attempts) == 1:
+                self.assertEqual(json.loads(path.read_text()), {'old': True})
+                raise PermissionError('transient Windows sharing lock')
+            return replace(source, target)
+        with patch.object(store.os, 'replace', side_effect=locked):
+            store.atomic_json(path, {'new': True})
+        self.assertEqual(json.loads(path.read_text()), {'new': True})
+        self.assertEqual(len(attempts), 2)
+
     def test_xss_and_large_offline_report(self):
         folder, record = store.reserve('standalone', 'html', self.root)
         malicious = '</script><script>alert(1)</script>'
@@ -198,6 +216,32 @@ class ConsoleTests(unittest.TestCase):
             app.compare(self.source(), 'partial')
         self.assertEqual(run.call_count, 1)
         self.assertEqual(store.load('compare', 'partial', self.root)['status'], 'failed')
+
+    @unittest.skipUnless(shutil.which('node'), 'Optional Node.js script-level report check')
+    def test_report_search_pagination_script(self):
+        folder, record = store.reserve('standalone', 'script', self.root)
+        malicious = '<script>alert(1)</script>'
+        store.write_counts(folder / 'result.tsv', {**{f'word{i}': 1 for i in range(120)}, malicious: 9})
+        report = generate(folder, record)
+        script = r'''
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const html=fs.readFileSync(process.argv[1],'utf8');
+const data=html.match(/<script id="data" type="application\/json">([\s\S]*?)<\/script>/)[1];
+const js=html.match(/<\/script><script>([\s\S]*?)<\/script>/)[1];
+function element(){return {children:[],textContent:'',events:{},replaceChildren(){this.children=[]},appendChild(x){this.children.push(x)},addEventListener(k,v){this.events[k]=v},set innerHTML(value){throw Error('Unsafe innerHTML')}}}
+const ids={};for(const id of ['data','rows','page','prev','next','search'])ids[id]=element();ids.data.textContent=data;
+vm.runInNewContext(js,{document:{getElementById:id=>ids[id],createElement:()=>element()}});
+assert.equal(ids.rows.children.length,50);assert.equal(ids.prev.disabled,true);assert.equal(ids.next.disabled,false);
+ids.next.onclick();assert.equal(ids.rows.children.length,50);assert.equal(ids.prev.disabled,false);
+ids.next.onclick();assert.equal(ids.rows.children.length,21);assert.equal(ids.next.disabled,true);
+ids.search.events.input({target:{value:'<script>'}});assert.equal(ids.rows.children.length,1);
+assert.equal(ids.rows.children[0].children[0].textContent,'<script>alert(1)</script>');
+ids.search.events.input({target:{value:'does-not-exist'}});assert.equal(ids.rows.children.length,0);
+console.log('REPORT_SCRIPT_PASS search pagination textContent');
+'''
+        result = subprocess.run([shutil.which('node'), '-e', script, str(report)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('REPORT_SCRIPT_PASS', result.stdout)
 
 
 if __name__ == '__main__':

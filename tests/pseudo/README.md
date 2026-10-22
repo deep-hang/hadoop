@@ -1,5 +1,11 @@
 # 伪分布式服务、持久化与运行结果测试
 
+## 统一入口新增集成测试
+
+`python -B tests/pseudo/check-console.py` 使用两个随机 Compose 项目与测试专用卷/端口，验证真实双模式对照、自定义与空输入、结构化 HDFS 查看、结果篡改及复验、中断隔离、跨目录包装器和离线报告。源码运行入口不提供测试项目覆盖参数，测试通过 Python 对象注入隔离项目配置。
+
+先运行 `python -B tests/standalone/test_console.py`，再顺序运行本测试和下方原有伪分布式 20 项回归。不要同时运行这些资源清单核对测试；日志和 JSON 保存在 `runtime/member5/tests/`，失败也保留。原有持久化与服务故障测试继续执行。
+
 负责人：5 号。测试在全新专属卷中运行真实 NameNode/DataNode、HDFS 操作、本地 MapReduce、重启和容器重建。
 
 ## 在电脑终端执行

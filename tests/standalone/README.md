@@ -1,5 +1,13 @@
 # 单机模式的输入、执行与输出测试
 
+## 统一入口新增测试
+
+`python -B tests/standalone/test_console.py` 执行增强入口的标准库单元测试，不需要 Docker，覆盖输入快照与变更检测、并发 ID、防覆盖、损坏历史记录、失败对照、报告转义和完整结果、非交互菜单及路径边界。
+
+若宿主机已有 Node.js，还会执行可选的报告脚本测试，用最小 DOM 模型核对搜索、分页和 textContent 渲染；没有 Node.js 时只跳过这一项，不影响增强入口的 Python 标准库运行要求。该检查不等同于真实浏览器视觉核验。
+
+真实双模式增强入口测试使用 `python -B tests/pseudo/check-console.py`，见[对应说明](../pseudo/README.md)。下方原单机 18 项回归继续运行，不由新增单元测试替代。
+
 负责人：5 号。测试使用真实 Hadoop 本地作业，不是模拟输出。固定输入/预期由 `modes/standalone/` 提供；不读取成员 6 的应用输入。
 
 ## 在电脑终端执行

@@ -1,5 +1,11 @@
 # 5 号：伪分布式模式
 
+## 新增统一菜单与结果报告
+
+使用成员 5 统一入口：`powershell -NoProfile -ExecutionPolicy Bypass -File .\modes\standalone\console.ps1`，或 `bash modes/standalone/console.sh`，需要 Python 3.10+。菜单提供显式 init/up、伪分布式作业、双模式对照、历史复验、HDFS 文件查看和 NameNode 页面跳转；不会在运行作业时自动初始化。
+
+完整接口与离线报告见[统一入口说明](../../docs/modules/standalone-pseudo/CONSOLE.md)。没有新增持久化演示菜单，下方原管理入口及持久化验证继续保留。
+
 使用原基础镜像，在一个容器内运行独立 NameNode、DataNode 进程，提供单节点 HDFS。计算方式为**本地 MapReduce 读取/写入 HDFS**；不启动 YARN。无需等待成员 2—4 的三节点集群。
 
 ## 首次启动与运行（电脑终端）

@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,7 +38,16 @@ def atomic_json(path, value):
             json.dump(value, stream, ensure_ascii=False, indent=2)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, path)
+        # Docker Desktop/Windows file-sharing readers can briefly hold a handle
+        # without delete sharing. Keep replacement atomic; never truncate the target.
+        for attempt in range(12):
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError:
+                if attempt == 11:
+                    raise
+                time.sleep(min(0.02 * 2**attempt, 0.25))
     finally:
         temporary.unlink(missing_ok=True)
 

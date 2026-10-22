@@ -25,7 +25,8 @@ def properties(record):
             ('不同词数', record.get('distinct_words')), ('总词数', record.get('total_words')),
             ('端到端耗时（秒）', record.get('elapsed_seconds')), ('源码提交', record.get('source_commit')),
             ('源码有未提交修改', record.get('source_dirty')), ('镜像 ID', record.get('image_id')),
-            ('日志原位置', record.get('log')), ('失败阶段/原因', record.get('error'))]
+            ('日志原位置', record.get('log')), ('失败阶段/原因', record.get('error')),
+            ('最近验证日志', record.get('verification_log')), ('最近验证失败原因', record.get('verification_error'))]
 
 
 def card(record):

@@ -87,13 +87,18 @@ class Console:
             print(f'  {word}\t{count}')
         print('输出：' + str(evidence.get('output_path', '未记录')))
         print('日志：' + str(record.get('log', '未记录')))
+        if record.get('verification_log'):
+            print('最近验证日志：' + record['verification_log'])
+        if record.get('verification_error'):
+            print('最近验证失败：' + record['verification_error'])
         if record.get('error'):
             print('失败信息：' + record['error'])
         if record.get('reports'):
             print('报告：' + record['reports'][-1]['path'])
 
     def validate(self, mode, folder, record):
-        entry = dict(time=now(), status='failed')
+        entry = dict(time=now(), status='failed', log=str(self.backend.log) if self.backend.log else None)
+        record['verification_log'] = entry['log']
         try:
             self.backend.inside(mode, 'bash', f'/workspace/modes/{mode}/verify.sh', record['id'], timeout=None)
             evidence = self.backend.inspect(mode, 'inspect', mode, record['id'])
@@ -110,10 +115,12 @@ class Console:
                           top_words=ordered(counts)[:20], result_captured_at=now())
             entry.update(status='passed', evidence=evidence)
             record['verification'] = 'passed'
+            record.pop('verification_error', None)
         except BaseException as error:
             record['verification'] = 'interrupted' if isinstance(error, KeyboardInterrupt) else 'failed'
             entry['status'] = record['verification']
             entry['error'] = str(error) or '用户中断'
+            record['verification_error'] = entry['error']
             raise
         finally:
             record['validations'].append(entry)
