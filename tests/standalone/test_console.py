@@ -126,6 +126,14 @@ class ConsoleTests(unittest.TestCase):
         self.assertEqual(json.loads(path.read_text()), {'new': True})
         self.assertEqual(len(attempts), 2)
 
+    def test_deep_windows_path_uses_short_temporary_name(self):
+        parent = self.root / ('x' * max(1, 210 - len(str(self.root.resolve())) - 1))
+        parent.mkdir()
+        target = parent / 'verification-123456789012.json'
+        store.atomic_json(target, {'deep': True})
+        self.assertEqual(json.loads(target.read_text(encoding='utf-8')), {'deep': True})
+        self.assertFalse(list(parent.glob('.m5-*.tmp')))
+
     def test_xss_and_large_offline_report(self):
         folder, record = store.reserve('standalone', 'html', self.root)
         malicious = '</script><script>alert(1)</script>'

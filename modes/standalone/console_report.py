@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import shutil
 import uuid
+from datetime import datetime, timezone
 from console_store import atomic_json, now, ordered, parse_counts, local_time
 
 
@@ -38,7 +39,7 @@ def card(record):
 
 def generate(folder, record, children=()):
     folder = Path(folder)
-    stamp = now().replace(':', '').replace('+', '-') + '-' + uuid.uuid4().hex[:8]
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
     target = folder / 'reports' / stamp
     target.mkdir(parents=True)
     counts = {}

@@ -32,7 +32,9 @@ def auto_id(prefix='run'):
 def atomic_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+    # Keep the temporary sibling shorter than the final filename: Windows may
+    # have LongPathsEnabled=0 even when the repository itself is valid.
+    temporary = path.with_name('.m5-' + uuid.uuid4().hex[:12] + '.tmp')
     try:
         with temporary.open('x', encoding='utf-8', newline='\n') as stream:
             json.dump(value, stream, ensure_ascii=False, indent=2)
