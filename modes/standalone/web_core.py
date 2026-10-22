@@ -296,7 +296,7 @@ class Manager:
         for task in (self.root / 'tasks').iterdir():
             try:
                 request = read_json(task / 'request.json')
-                if request.get('run_id') == identifier and request['action'] in ('run', 'compare'):
+                if request.get('run_id') == identifier and request['action'] in ('run', 'compare') and (request['action'] == 'compare' or request.get('mode') == mode):
                     state = read_json(task / 'state.json')
                     record.update(timeline=state.get('events', []), task_id=task.name, web_input=request.get('input'))
                     break

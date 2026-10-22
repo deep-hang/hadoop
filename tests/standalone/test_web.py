@@ -93,6 +93,30 @@ class WebTests(unittest.TestCase):
     def test_single_instance_lock(self):
         with self.assertRaises(ApiError):ServerLock(self.manager.root)
 
+    def test_occupied_port_preserves_original_server(self):
+        with self.assertRaises(OSError):make_server(self.manager,self.server.server_port)
+        self.assertEqual(self.http('/api/session')[0],200)
+
+    def test_mode_and_id_are_joint_record_identity(self):
+        for mode in ('standalone','pseudo'):reserve(mode,'shared',self.manager.home)
+        task=self.manager.root/'tasks'/'single';task.mkdir()
+        atomic_json(task/'request.json',dict(action='run',mode='standalone',run_id='shared',created='2026-01-01T00:00:00Z'))
+        atomic_json(task/'state.json',dict(status='success',events=[dict(mode='standalone',stage='input',status='success')]))
+        self.assertEqual(len(self.manager.result('standalone','shared')['timeline']),1)
+        self.assertEqual(self.manager.result('pseudo','shared')['timeline'],[])
+
+    def test_restart_recovers_persisted_unfinished_task(self):
+        self.manager.close()
+        task=self.manager.root/'tasks'/'orphan';task.mkdir()
+        atomic_json(task/'request.json',dict(action='doctor',created='2026-01-01T00:00:00Z'))
+        atomic_json(task/'state.json',dict(status='running',events=[],clients=[],results=[]))
+        self.manager=Manager(self.root/'web',self.root/'records')
+        self.assertTrue((task/'cancel').exists())
+        self.manager.recovery_started=time.monotonic()-46
+        deadline=time.monotonic()+3
+        while self.manager.active and time.monotonic()<deadline:time.sleep(.05)
+        self.assertEqual(self.manager.task('orphan')['status'],'interrupted')
+
     def test_static_page_no_external_dependencies(self):
         for path in ['/','/app.js','/style.css']:
             code,data=self.http(path);self.assertEqual(code,200);self.assertGreater(len(data),100)

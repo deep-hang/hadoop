@@ -7,8 +7,10 @@ if sys.version_info < (3, 10):
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 import secrets
+import socket
 import threading
 from urllib.parse import parse_qs, urlsplit
 import webbrowser
@@ -17,6 +19,16 @@ from console_store import now
 from web_core import ApiError, Manager, read_json
 
 ASSETS = Path(__file__).with_name('web-assets')
+
+
+class LocalHTTPServer(ThreadingHTTPServer):
+    # Windows SO_REUSEADDR can allow a second listener on an occupied port.
+    allow_reuse_address = os.name != 'nt'
+
+    def server_bind(self):
+        if os.name == 'nt':
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        return super().server_bind()
 
 
 def make_server(manager, port=19875):
@@ -142,7 +154,7 @@ def make_server(manager, port=19875):
         def do_GET(self): self.dispatch()
         def do_POST(self): self.dispatch(True)
 
-    server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
+    server = LocalHTTPServer(('127.0.0.1', port), Handler)
     server.daemon_threads = True
     return server
 
