@@ -57,6 +57,21 @@ m5_counts() {
     return "$code"
 }
 
+m5_file_uri() {
+    # Hadoop Put parses local arguments as URI first. Encode UTF-8 bytes and
+    # reserved characters so spaces/#/% never select the default HDFS by mistake.
+    local LC_ALL=C
+    local path="$1" uri='file://' char hex i
+    for ((i=0; i<${#path}; i++)); do
+        char="${path:i:1}"
+        case "$char" in
+            [a-zA-Z0-9/._~-]) uri+="$char" ;;
+            *) printf -v hex '%%%02X' "'$char"; uri+="$hex" ;;
+        esac
+    done
+    printf '%s' "$uri"
+}
+
 m5_compare() {
     local actual="$1" expected="$2" scratch code=0
     scratch="$(mktemp -d)"

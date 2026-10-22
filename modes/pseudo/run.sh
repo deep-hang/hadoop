@@ -20,7 +20,7 @@ hdfs dfs -mkdir "$input"
 for file in "${M5_FILES[@]}"; do
     # With spaces, Hadoop's Put falls back to PathData(String), which would
     # otherwise resolve an unqualified source against defaultFS (HDFS).
-    hdfs dfs -put "file://$file" "$input/"
+    hdfs dfs -put "$(m5_file_uri "$file")" "$input/"
 done
 hadoop jar "$HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar" \
     wordcount "$input" "$output"

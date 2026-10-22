@@ -162,7 +162,7 @@ def custom_input_checks(suite):
     folder = suite.report / 'custom input 空格'
     folder.mkdir()
     (folder / 'first 中文.txt').write_bytes(b'\xef\xbb\xbf' + 'Apple apple apple\r\n你好 世界\r\npunct, punct,\r\n'.encode('utf-8'))
-    (folder / 'second.txt').write_text('apple\tApple\f世界\n\n', encoding='utf-8')
+    (folder / 'second #100%.txt').write_text('apple\tApple\f世界\n\n', encoding='utf-8')
     (folder / '.ignored.txt').write_text('ignored', encoding='utf-8')
     (folder / '_ignored.txt').write_text('ignored', encoding='utf-8')
     original = tree_digest(folder)
