@@ -6,7 +6,9 @@ import base64
 import json
 import tempfile
 import threading
+import time
 import unittest
+from unittest.mock import patch, Mock
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
@@ -19,6 +21,7 @@ from web_core import ApiError, Manager, ServerLock
 
 class WebTests(unittest.TestCase):
     def setUp(self):
+        (ROOT / 'runtime/member5').mkdir(parents=True, exist_ok=True)
         self.temp = tempfile.TemporaryDirectory(dir=ROOT / 'runtime/member5', prefix='web-unit-')
         self.root = Path(self.temp.name)
         self.manager = Manager(self.root / 'web', self.root / 'records', max_bytes=100000)
@@ -95,6 +98,36 @@ class WebTests(unittest.TestCase):
             code,data=self.http(path);self.assertEqual(code,200);self.assertGreater(len(data),100)
         html=self.http('/')[1].decode()
         self.assertNotIn('https://',html);self.assertIn('lang="zh-CN"',html)
+
+    def test_duplicate_busy_cancel_and_task_identity(self):
+        fake = Mock(); fake.poll.return_value = None
+        uploaded = self.manager.upload(dict(text='hello'))
+        body = dict(action='run', mode='standalone', input_id=uploaded['id'], request_id='same-request')
+        with patch('web_core.subprocess.Popen', return_value=fake):
+            first=self.manager.submit(body)
+        self.assertEqual(self.manager.submit(body)['id'], first['id'])
+        with self.assertRaises(ApiError):self.manager.submit(dict(body, action='compare'))
+        with self.assertRaises(ApiError):self.manager.submit(dict(action='service', operation='down', request_id='another'))
+        self.assertEqual(self.manager.cancel(first['id'])['status'],'cancelling')
+        atomic_json(self.manager.task_path(first['id'])/'state.json',dict(status='interrupted',events=[],results=[]))
+        fake.poll.return_value=1
+        deadline=time.monotonic()+3
+        while self.manager.active and time.monotonic()<deadline:time.sleep(.05)
+        self.assertIsNone(self.manager.active)
+
+    def test_abnormal_worker_updates_saved_record(self):
+        folder,record=reserve('standalone','abrupt',self.manager.home)
+        record['execution']='running';atomic_json(folder/'record.json',record)
+        task=self.manager.root/'tasks'/'abrupt-task';task.mkdir()
+        atomic_json(task/'request.json',dict(action='run',mode='standalone',run_id='abrupt',created=record['started']))
+        atomic_json(task/'state.json',dict(status='running',clients=[],events=[],results=[dict(mode='standalone',id='abrupt')]))
+        fake=Mock();fake.poll.return_value=1
+        with self.manager.mutex:
+            self.manager.active='abrupt-task';self.manager.process=fake
+        deadline=time.monotonic()+3
+        while self.manager.active and time.monotonic()<deadline:time.sleep(.05)
+        self.assertEqual(self.manager.task('abrupt-task')['status'],'interrupted')
+        self.assertEqual(json.loads((folder/'record.json').read_text(encoding='utf-8'))['execution'],'interrupted')
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

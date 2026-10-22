@@ -127,6 +127,20 @@ def main():
         cancelled=wait(cancel,False);require(cancelled['status']=='interrupted','Cancel did not terminate job')
         pseudo.inside('bash','/workspace/modes/pseudo/healthcheck.sh')
         pseudo.mark('real in-flight cancellation removes only owned client; NameNode/DataNode stay healthy')
+        abrupt=submit('run',mode='pseudo',input_id=input_row['id'])
+        deadline=time.monotonic()+100
+        while time.monotonic()<deadline:
+            current=http('/api/task?id='+abrupt['id'])[1]
+            owned=current.get('clients',[])
+            if owned and owned[-1]['name'] in pseudo.run(['docker','ps','--format','{{.Names}}']).stdout.split():break
+            time.sleep(.2)
+        else:raise AssertionError('No owned client appeared before abnormal-exit test')
+        manager.process.kill()
+        stopped=wait(abrupt,False)
+        require(stopped['status']=='interrupted','Dead worker left a running task')
+        require(http('/api/result?mode=pseudo&id='+stopped['run_id'])[1]['status']=='interrupted','Dead worker left a running record')
+        pseudo.inside('bash','/workspace/modes/pseudo/healthcheck.sh')
+        pseudo.mark('abnormal worker exit recovers record and owned client while HDFS stays healthy')
         wait(submit('service',operation='down'))
         require(http('/api/result?mode=compare&id='+run)[1]['verification']=='passed','Offline history unavailable')
         require(http('/api/download?mode=compare&id='+run+'&kind=report')[0]==200,'Offline report unavailable')

@@ -123,6 +123,15 @@ class Manager:
                                     errors.append(str(exc))
                             state.update(status='failed' if errors else 'interrupted', ended=now(),
                                          error='工作进程异常退出；已核查本次临时客户端' + ('\n' + '\n'.join(errors) if errors else ''))
+                            for result in state.get('results', []):
+                                try:
+                                    record = load(result['mode'], result['id'], self.home)
+                                    if record['status'] == 'running':
+                                        record.update(status='interrupted', ended=now(), error=state['error'])
+                                        if record.get('execution') == 'running': record['execution'] = 'interrupted'
+                                        atomic_json(location(result['mode'], result['id'], self.home) / 'record.json', record)
+                                except (OSError, ValueError, KeyError):
+                                    pass
                             atomic_json(folder / 'state.json', state)
                             ended = True
                         if ended and (self.process is None or self.process.poll() is not None):
