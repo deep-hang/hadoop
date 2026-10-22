@@ -68,6 +68,21 @@
 
 单机保存 runtime 下的输入副本；伪分布式保存 HDFS 输入，借助只读挂载的临时 client 接收宿主机文件，无需重新挂载 HDFS 服务。临时 client 为 1 CPU/1 GiB，服务保持 2 CPU/2 GiB、一个 DataNode；客户端退出自动移除。普通输出保护、数据卷及成员目录边界保持原有规则。
 
+扩展版最终在干净源码副本 `runtime/member5/repro-input-final/` 复验，源码提交 `5ecd76c5c64ddb1f36d09b7f94a6844d77c30249`：
+
+| 验证 | 最终结果 | 副本内证据 |
+| --- | --- | --- |
+| Git Bash 单机 test | passed=true，18 项通过 | `runtime/member5/tests/hadoop-m5-standalone-test-c22503b461/result.json` |
+| PowerShell 伪分布式 test | passed=true，20 项通过 | `runtime/member5/tests/hadoop-m5-pseudo-test-0d8ade4c4b/result.json` |
+
+固定两句样例仍被独立核对。自定义多文件案例的唯一预期为 Apple=2、apple=3、你好=1、世界=2、punct,=2；案例包括中文/空格/`#`/`%` 文件名、BOM/CRLF/Tab/换页符、隐藏文件和空文本。已验证源文件保持原样、修改源文件后旧结果仍可校验、篡改输出失败、已有 ID 拒绝覆盖，以及自定义 HDFS 结果经 restart 和 down/up 后仍正确。
+
+上传将本地文件名转换为编码后的 `file://` URI，避免 Hadoop Put 遇到空格时按默认 HDFS 解释本地路径。测试工具对 stdin 使用原始 UTF-8 字节，避免 Windows 文本管道把 LF 改为 CRLF；对应本机诊断证据为 `runtime/member5/encoded-uri-check.log` 和 `runtime/member5/windows-stdin-check.json`。调试失败记录保留在各自随机报告目录，最终通过结果以以上两行记录为准。
+
+实际宿主机入口也已核验：PowerShell 自定义目录、Git Bash 自定义文件在两种模式均成功，控制日志分别位于 `runtime/member5/standalone/control/custom-host-*.log` 和 `runtime/member5/pseudo/control/custom-final-*.log`。旧版 `impl-001` 仍可校验，伪分布式正常环境结束后已 down 并保留数据卷。原生 Mac 仍未实机验证。
+
+本机另提供可修改的 `runtime/member5/custom-input-example.txt`：三行输入的结果为 Docker=2、Hadoop=3、Python=1，已通过真实单机作业验证。它属于本机忽略文件，不是运行依赖；其他人可传自己的 UTF-8 文本路径。所有自动测试资源已清理，原有其他项目保留。最终运行源码与上述报告的 SHA-256 一致，仅本地提交，等待用户核验后才考虑推送。
+
 文件范围审计可在电脑终端复验：
 
 ```text
