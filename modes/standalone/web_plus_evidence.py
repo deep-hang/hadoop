@@ -3,6 +3,7 @@ from datetime import datetime
 import hashlib
 import html
 import json
+import re
 from pathlib import Path
 import uuid
 
@@ -44,17 +45,21 @@ def save_evidence(home, mode, identifier, kind, data):
 
 def exact_rows(text):
     counts, errors = {}, []
-    for number, line in enumerate(text.splitlines(), 1):
+    lines=text.split('\n')
+    for number, line in enumerate(lines, 1):
+        # Java StringTokenizer does not split NEL/U+2028/U+2029 tokens.
+        if number==len(lines) and not line:continue
         if not line:
             errors.append(dict(line=number, problem='空结果行'))
             continue
         fields = line.split('\t')
-        if len(fields) != 2 or not fields[0] or not fields[1].isdigit() or int(fields[1]) <= 0:
+        if len(fields) != 2 or not fields[0] or not re.fullmatch(r'[1-9][0-9]*',fields[1]):
             errors.append(dict(line=number, problem='词频格式错误', text=line))
         elif fields[0] in counts:
             errors.append(dict(line=number, problem='重复词语', text=line))
         else:
-            counts[fields[0]] = int(fields[1])
+            try:counts[fields[0]] = int(fields[1])
+            except ValueError:errors.append(dict(line=number,problem='计数无法解析',text=line))
     return counts, errors
 
 
@@ -77,7 +82,8 @@ def diagnostic(raw):
     rows = differences(expected, actual) if available else []
     return dict(available=available, success_marker=bool(raw.get('success_marker')),
                 part_count=raw.get('part_count', 0), errors=errors, rows=rows,
-                expected_total=sum(expected.values()), actual_total=sum(actual.values()) if available else None,
+                expected_total=sum(expected.values()), actual_total=sum(actual.values()) if available and not errors else None,
+                parsed_partial_total=sum(actual.values()) if available else None,
                 expected_source='保存输入快照，使用原 Java InputCounts 独立计算',
                 actual_source='本次真实存储输出，非历史结果缓存',
                 matches=available and bool(raw.get('success_marker')) and not errors and not rows,

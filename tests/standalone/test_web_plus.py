@@ -103,6 +103,11 @@ class EnhancedTests(unittest.TestCase):
         counts,errors=exact_rows('hello\t2\nhello\t3\nbad\nzero\t0\n')
         self.assertEqual(counts,{'hello':2});self.assertEqual(len(errors),3)
 
+    def test_java_unicode_tokens_and_non_ascii_counts(self):
+        counts,errors=exact_rows('a\u0085b\t1\n段\u2028落\t2\n')
+        self.assertEqual(counts,{'a\u0085b':1,'段\u2028落':2});self.assertEqual(errors,[])
+        self.assertEqual(len(exact_rows('bad\t²\nwrong\t١\n')[1]),2)
+
     def test_diagnostic_missing_extra_wrong_counts(self):
         data=diagnostic(dict(expected_text='a\t2\nb\t1\n',actual_text='a\t1\nc\t5\n',output_exists=True,part_count=1,success_marker=True))
         self.assertEqual({r['kind'] for r in data['rows']},{'缺失词','多出词','计数差异'})
@@ -112,6 +117,10 @@ class EnhancedTests(unittest.TestCase):
         empty=diagnostic(dict(expected_text='',actual_text='',output_exists=True,part_count=1,success_marker=True))
         absent=diagnostic(dict(expected_text='',actual_text='',output_exists=False,part_count=0,success_marker=False))
         self.assertTrue(empty['matches']);self.assertFalse(absent['available'])
+
+    def test_malformed_output_does_not_claim_a_complete_total(self):
+        data=diagnostic(dict(expected_text='a\t1\n',actual_text='a\t1\nbroken\n',output_exists=True,part_count=1,success_marker=True))
+        self.assertIsNone(data['actual_total']);self.assertEqual(data['parsed_partial_total'],1)
 
     def test_success_marker_missing_is_failure(self):
         data=diagnostic(dict(expected_text='a\t1\n',actual_text='a\t1\n',output_exists=True,part_count=1,success_marker=False))

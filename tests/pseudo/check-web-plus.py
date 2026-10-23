@@ -47,7 +47,7 @@ def main():
         raise AssertionError('task timeout '+state['id'])
     passed,error=False,None
     try:
-        text='hello hadoop\nhello 你好 世界 <script>x</script>\n'
+        text='hello hadoop\nhello 你好 世界 <script>x</script>\na\u0085b 段\u2028落\n'
         input_row=http('/api/inputs',dict(text=text))[1]
         failed=wait(submit('run',mode='pseudo',input_id=input_row['id']),False)
         require(failed['status']=='failed' and failed['failure']['code']=='HDFS_NOT_READY','missing HDFS classification')
@@ -63,7 +63,7 @@ def main():
         running=submit('compare',input_id=input_row['id'])
         require(http('/api/tasks',dict(action='service',operation='down',request_id=uuid.uuid4().hex))[0]==409,'service removal accepted during job')
         done=wait(running);identifier=done['run_id']
-        expected={'hello':2,'hadoop':1,'你好':1,'世界':1,'<script>x</script>':1}
+        expected={'hello':2,'hadoop':1,'你好':1,'世界':1,'<script>x</script>':1,'a\u0085b':1,'段\u2028落':1}
         for mode in ('standalone','pseudo'):
             record=http('/api/result?mode='+mode+'&id='+identifier)[1]
             require(parse_counts((location(mode,identifier,manager.home)/'result.tsv').read_text(encoding='utf-8'))==expected,'wrong true Hadoop result')
