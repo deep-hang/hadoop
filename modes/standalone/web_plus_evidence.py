@@ -110,12 +110,14 @@ def comparison(home, identifier, record, timeline=()):
             output[mode], errors[mode] = exact_rows(path.read_text(encoding='utf-8'))
     available = len(output) == 2 and not any(errors.values())
     rows = differences(output['standalone'], output['pseudo']) if available else []
-    independent = len(children) == 2 and all(r.get('verification') == 'passed' for r in children.values())
+    complete=set(children)=={'standalone','pseudo'}
+    verified=complete and all(r.get('verification') in ('passed','failed','interrupted') for r in children.values())
+    independent=all(r.get('verification')=='passed' for r in children.values()) if verified else None
     inputs = None
-    if record.get('manifest') is not None and len(children) == 2 and all(r.get('evidence', {}).get('manifest') is not None for r in children.values()):
+    if record.get('manifest') is not None and complete and all(r.get('evidence', {}).get('manifest') is not None for r in children.values()):
         inputs = all(r['evidence']['manifest'] == record['manifest'] for r in children.values())
         if record.get('inputs_equal') is False:inputs=False
-    passed = independent and inputs is True and available and not rows and record.get('outputs_equal') is True
+    passed = independent is True and inputs is True and available and not rows and record.get('outputs_equal') is True
     timings = []
     for mode in ('compare', 'standalone', 'pseudo'):
         for stage in ('environment', 'snapshot', 'input', 'compute', 'verify', 'evidence', 'report'):
@@ -125,7 +127,7 @@ def comparison(home, identifier, record, timeline=()):
             if starts and ends:
                 duration = (datetime.fromisoformat(ends[-1]['time'].replace('Z', '+00:00')) - datetime.fromisoformat(starts[0]['time'].replace('Z', '+00:00'))).total_seconds()
                 timings.append(dict(mode=mode, stage=stage, seconds=max(0, duration)))
-    return dict(schema_version=1, available=available, conclusion='对照通过' if passed else '对照未通过' if available else '尚不能比较',
+    return dict(schema_version=1, available=available, conclusion='对照通过' if passed else '对照未通过' if available and independent is not None and inputs is not None else '尚不能比较',
                 passed=passed, inputs_equal=inputs, independent=independent,
                 outputs_equal=not rows if available else None, rows=rows, parse_errors=errors,
                 common_manifest=record.get('manifest'), children=list(children.values()), timings=timings,

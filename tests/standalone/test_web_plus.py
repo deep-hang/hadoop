@@ -146,6 +146,12 @@ class EnhancedTests(unittest.TestCase):
         row['children'][1]['snapshot']['evidence']['manifest']=[dict(name='different.txt',bytes=3,sha256='different')]
         self.assertFalse(comparison(self.manager.home,'paired',row)['passed'],'a saved true flag cannot override contradictory input evidence')
         row['children'][1]['snapshot']['evidence']['manifest']=manifest
+        row['children'][1]['snapshot']['mode']='other'
+        self.assertFalse(comparison(self.manager.home,'paired',row)['passed'])
+        row['children'][1]['snapshot']['mode']='pseudo'
+        row['children'][1]['snapshot'].pop('verification')
+        self.assertIsNone(comparison(self.manager.home,'paired',row)['independent'])
+        self.assertEqual(comparison(self.manager.home,'paired',row)['conclusion'],'尚不能比较')
         row['children'].pop();self.assertFalse(comparison(self.manager.home,'paired',row)['passed'])
 
     def test_comparison_missing_side_not_empty_result(self):
