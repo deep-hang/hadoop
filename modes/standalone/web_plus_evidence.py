@@ -110,7 +110,7 @@ def comparison(home, identifier, record, timeline=()):
             output[mode], errors[mode] = exact_rows(path.read_text(encoding='utf-8'))
     available = len(output) == 2 and not any(errors.values())
     rows = differences(output['standalone'], output['pseudo']) if available else []
-    complete=set(children)=={'standalone','pseudo'}
+    complete=set(children)=={'standalone','pseudo'} and all(children[mode].get('mode')==mode and children[mode].get('id')==identifier for mode in ('standalone','pseudo'))
     verified=complete and all(r.get('verification') in ('passed','failed','interrupted') for r in children.values())
     independent=all(r.get('verification')=='passed' for r in children.values()) if verified else None
     inputs = None
