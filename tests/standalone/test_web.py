@@ -1,0 +1,181 @@
+"""HTTP/input/security/persistence tests; stdlib, no Docker needed."""
+import sys
+sys.dont_write_bytecode = True
+from pathlib import Path
+import base64
+import json
+import tempfile
+import subprocess
+import threading
+import time
+import unittest
+from unittest.mock import patch, Mock
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'modes/standalone'))
+from console_store import reserve, atomic_json, write_counts
+from web import make_server
+from web_core import ApiError, Manager, ServerLock, cleanup_owned_client
+from console_backend import Backend
+
+
+class WebTests(unittest.TestCase):
+    def setUp(self):
+        (ROOT / 'runtime/member5').mkdir(parents=True, exist_ok=True)
+        self.temp = tempfile.TemporaryDirectory(dir=ROOT / 'runtime/member5', prefix='web-unit-')
+        self.root = Path(self.temp.name)
+        self.manager = Manager(self.root / 'web', self.root / 'records', max_bytes=100000)
+        self.server = make_server(self.manager, 0)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True); self.thread.start()
+        self.url = 'http://127.0.0.1:' + str(self.server.server_port)
+        self.token = self.http('/api/session')[1]['token']
+
+    def tearDown(self):
+        self.server.shutdown(); self.server.server_close(); self.manager.close(); self.temp.cleanup()
+
+    def http(self, path, body=None, headers=None):
+        request = Request(self.url + path, data=None if body is None else json.dumps(body).encode(),
+                          headers={'Content-Type':'application/json','X-M5-Token':self.token if hasattr(self,'token') else '', **(headers or {})})
+        try:
+            with urlopen(request, timeout=5) as response:
+                raw=response.read(); return response.status, json.loads(raw) if 'application/json' in response.headers.get('Content-Type','') else raw
+        except HTTPError as error:
+            return error.code, json.loads(error.read())
+
+    def test_text_and_snapshot_independence(self):
+        code, data = self.http('/api/inputs', {'text':'你好 世界 <script>x</script>\n'})
+        self.assertEqual(code,201)
+        self.assertEqual((self.manager.root/'inputs'/data['id']/'input.txt').read_text(encoding='utf-8'),'你好 世界 <script>x</script>\n')
+        self.assertEqual(data['kind'],'text'); self.assertEqual(len(data['sha256']),64)
+
+    def test_txt_bom_unicode_name_empty_and_invalid(self):
+        for name, raw in [('中文 #100%.TXT', b'\xef\xbb\xbfhello'), ('empty.txt', b'')]:
+            code, row=self.http('/api/inputs',dict(name=name,base64=base64.b64encode(raw).decode()))
+            self.assertEqual(code,201);self.assertEqual(row['name'],name);self.assertEqual(row['bytes'],len(raw))
+        for body in [dict(name='x.csv',base64=''),dict(name='../x.txt',base64=''),dict(name='x.txt',base64='/w=='),dict(text=''),dict(text='x',base64='')]:
+            self.assertEqual(self.http('/api/inputs',body)[0],400)
+
+    def test_size_limit(self):
+        self.assertEqual(self.http('/api/inputs',{'text':'a'*100001})[0],413)
+        self.assertEqual(self.http('/api/inputs',{'text':'a'*210000})[0],413)
+
+    def test_security_host_origin_token_and_traversal(self):
+        self.assertEqual(self.http('/api/session',headers={'Host':'evil.example'})[0],403)
+        self.assertEqual(self.http('/api/session',headers={'Origin':'https://evil.example'})[0],403)
+        self.assertEqual(self.http('/api/inputs',{'text':'x'},headers={'X-M5-Token':'bad'})[0],403)
+        self.assertEqual(self.http('/../../.development')[0],404)
+        self.assertEqual(self.http('/api/task?id=../bad')[0],400)
+        self.assertEqual(self.http('/api/tasks',dict(action='service',operation='reset',request_id='bad'))[0],400)
+        self.assertEqual(self.http('/api/tasks',dict(action='hdfs',operation='cat',area='input',run_id='valid',filename='../x',request_id='bad'))[0],400)
+
+    def test_full_result_search_pagination_and_safe_artifacts(self):
+        folder, record=reserve('standalone','many',self.manager.home)
+        record.update(status='success',total_words=6001,distinct_words=6001,manifest=[])
+        atomic_json(folder/'record.json',record)
+        counts={f'word{i:05d}':1 for i in range(6000)};counts['<script>x</script>']=1
+        write_counts(folder/'result.tsv',counts)
+        code,data=self.http('/api/counts?mode=standalone&id=many&q=word05999')
+        self.assertEqual(code,200);self.assertEqual(data['total'],6001);self.assertEqual(data['rows'],[['word05999',1]])
+        data=self.http('/api/counts?mode=standalone&id=many&page=2')[1]
+        self.assertEqual(len(data['rows']),50);self.assertEqual(data['total_words'],6001)
+        self.assertEqual(self.http('/api/result?mode=standalone&id=many')[1]['status'],'success')
+        self.assertEqual(self.http('/api/download?mode=standalone&id=many&kind=tsv')[0],200)
+        record['reports']=[dict(path=str(ROOT/'.development'))];atomic_json(folder/'record.json',record)
+        self.assertEqual(self.http('/api/download?mode=standalone&id=many&kind=report')[0],400)
+
+    def test_missing_result_is_distinct_from_successful_empty_result(self):
+        folder,_=reserve('standalone','empty-result',self.manager.home)
+        missing=self.http('/api/counts?mode=standalone&id=empty-result')[1]
+        self.assertFalse(missing['available']);self.assertIsNone(missing['total_words'])
+        (folder/'result.tsv').write_text('',encoding='utf-8')
+        empty=self.http('/api/counts?mode=standalone&id=empty-result')[1]
+        self.assertTrue(empty['available']);self.assertEqual(empty['total_words'],0)
+
+    def test_corrupt_record_does_not_hide_other_history(self):
+        good, _=reserve('standalone','good',self.manager.home)
+        bad, _=reserve('standalone','bad',self.manager.home);(bad/'record.json').write_text('broken')
+        rows=self.http('/api/history')[1]['rows']
+        self.assertEqual({row['id'] for row in rows},{'good','bad'})
+        self.assertEqual(next(row for row in rows if row['id']=='bad')['status'],'损坏记录')
+
+    def test_single_instance_lock(self):
+        with self.assertRaises(ApiError):ServerLock(self.manager.root)
+
+    def test_occupied_port_preserves_original_server(self):
+        with self.assertRaises(OSError):make_server(self.manager,self.server.server_port)
+        self.assertEqual(self.http('/api/session')[0],200)
+
+    def test_mode_and_id_are_joint_record_identity(self):
+        for mode in ('standalone','pseudo'):reserve(mode,'shared',self.manager.home)
+        task=self.manager.root/'tasks'/'single';task.mkdir()
+        atomic_json(task/'request.json',dict(action='run',mode='standalone',run_id='shared',created='2026-01-01T00:00:00Z'))
+        atomic_json(task/'state.json',dict(status='success',events=[dict(mode='standalone',stage='input',status='success')]))
+        self.assertEqual(len(self.manager.result('standalone','shared')['timeline']),1)
+        self.assertEqual(self.manager.result('pseudo','shared')['timeline'],[])
+
+    def test_restart_recovers_persisted_unfinished_task(self):
+        self.manager.close()
+        task=self.manager.root/'tasks'/'orphan';task.mkdir()
+        atomic_json(task/'request.json',dict(action='doctor',created='2026-01-01T00:00:00Z'))
+        atomic_json(task/'state.json',dict(status='running',events=[],clients=[],results=[]))
+        self.manager=Manager(self.root/'web',self.root/'records')
+        self.assertTrue((task/'cancel').exists())
+        self.manager.recovery_started=time.monotonic()-46
+        deadline=time.monotonic()+3
+        while self.manager.active and time.monotonic()<deadline:time.sleep(.05)
+        self.assertEqual(self.manager.task('orphan')['status'],'interrupted')
+
+    def test_cleanup_distinguishes_missing_unreachable_and_foreign_container(self):
+        backend=Backend()
+        with patch('web_core.subprocess.run',return_value=subprocess.CompletedProcess([],1,b'[]',b'No such object: owned')) as run:
+            cleanup_owned_client(backend,'owned','pseudo','token');self.assertEqual(run.call_count,1)
+        with patch('web_core.subprocess.run',return_value=subprocess.CompletedProcess([],1,b'',b'Cannot connect to Docker engine')):
+            with self.assertRaises(RuntimeError):cleanup_owned_client(backend,'owned','pseudo','token')
+        foreign=json.dumps([dict(Config=dict(Labels={'com.docker.compose.project':'other'}))]).encode()
+        with patch('web_core.subprocess.run',return_value=subprocess.CompletedProcess([],0,foreign,b'')) as run:
+            with self.assertRaises(RuntimeError):cleanup_owned_client(backend,'owned','pseudo','token')
+            self.assertEqual(run.call_count,1)
+        owned=json.dumps([dict(Config=dict(Labels={'com.docker.compose.project':backend.projects['pseudo'],'member5.console.invocation':'token'}))]).encode()
+        with patch('web_core.subprocess.run',side_effect=[subprocess.CompletedProcess([],0,owned,b''),subprocess.CompletedProcess([],0,b'owned',b'')]) as run:
+            cleanup_owned_client(backend,'owned','pseudo','token');self.assertEqual(run.call_count,2)
+
+    def test_static_page_no_external_dependencies(self):
+        for path in ['/','/app.js','/style.css']:
+            code,data=self.http(path);self.assertEqual(code,200);self.assertGreater(len(data),100)
+        html=self.http('/')[1].decode()
+        self.assertNotIn('https://',html);self.assertIn('lang="zh-CN"',html)
+
+    def test_duplicate_busy_cancel_and_task_identity(self):
+        fake = Mock(); fake.poll.return_value = None
+        uploaded = self.manager.upload(dict(text='hello'))
+        body = dict(action='run', mode='standalone', input_id=uploaded['id'], request_id='same-request')
+        with patch('web_core.subprocess.Popen', return_value=fake):
+            first=self.manager.submit(body)
+        self.assertEqual(self.manager.submit(body)['id'], first['id'])
+        with self.assertRaises(ApiError):self.manager.submit(dict(body, action='compare'))
+        with self.assertRaises(ApiError):self.manager.submit(dict(action='service', operation='down', request_id='another'))
+        self.assertEqual(self.manager.cancel(first['id'])['status'],'cancelling')
+        atomic_json(self.manager.task_path(first['id'])/'state.json',dict(status='interrupted',events=[],results=[]))
+        fake.poll.return_value=1
+        deadline=time.monotonic()+3
+        while self.manager.active and time.monotonic()<deadline:time.sleep(.05)
+        self.assertIsNone(self.manager.active)
+
+    def test_abnormal_worker_updates_saved_record(self):
+        folder,record=reserve('standalone','abrupt',self.manager.home)
+        record['execution']='running';atomic_json(folder/'record.json',record)
+        task=self.manager.root/'tasks'/'abrupt-task';task.mkdir()
+        atomic_json(task/'request.json',dict(action='run',mode='standalone',run_id='abrupt',created=record['started']))
+        atomic_json(task/'state.json',dict(status='running',clients=[],events=[],results=[dict(mode='standalone',id='abrupt')]))
+        fake=Mock();fake.poll.return_value=1
+        with self.manager.mutex:
+            self.manager.active='abrupt-task';self.manager.process=fake
+        deadline=time.monotonic()+3
+        while self.manager.active and time.monotonic()<deadline:time.sleep(.05)
+        self.assertEqual(self.manager.task('abrupt-task')['status'],'interrupted')
+        self.assertEqual(json.loads((folder/'record.json').read_text(encoding='utf-8'))['execution'],'interrupted')
+
+
+if __name__=='__main__':unittest.main(verbosity=2)

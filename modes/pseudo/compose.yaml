@@ -1,0 +1,55 @@
+services:
+  pseudo:
+    image: ${BASE_IMAGE_NAME:?Use --env-file .development}:${BASE_IMAGE_TAG:?Use --env-file .development}
+    pull_policy: never
+    platform: linux/amd64
+    hostname: pseudo
+    init: true
+    stop_grace_period: 30s
+    cpus: 2
+    mem_limit: 2g
+    working_dir: /workspace
+    environment:
+      HADOOP_HEAPSIZE_MAX: '512'
+      HDFS_NAMENODE_OPTS: -Xmx256m
+      HDFS_DATANODE_OPTS: -Xmx256m
+    volumes:
+      - ../..:/workspace:ro
+      - ./conf/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./conf/mapred-site.xml:/opt/hadoop/etc/hadoop/mapred-site.xml:ro
+      - pseudo-data:/var/lib/hadoop
+    ports:
+      - '127.0.0.1:${M5_PSEUDO_WEB_PORT:-19870}:9870'
+    healthcheck:
+      test: [CMD, bash, /workspace/modes/pseudo/healthcheck.sh]
+      interval: 10s
+      timeout: 20s
+      start_period: 15s
+      retries: 18
+    command: [bash, /workspace/modes/pseudo/node.sh, start]
+  client:
+    profiles: [tools]
+    image: ${BASE_IMAGE_NAME:?Use --env-file .development}:${BASE_IMAGE_TAG:?Use --env-file .development}
+    pull_policy: never
+    platform: linux/amd64
+    init: true
+    cpus: 1
+    mem_limit: 1g
+    working_dir: /workspace
+    environment:
+      HADOOP_HEAPSIZE_MAX: '512'
+    volumes:
+      - ../..:/workspace:ro
+      - ./conf/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./conf/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./conf/mapred-site.xml:/opt/hadoop/etc/hadoop/mapred-site.xml:ro
+      - type: bind
+        source: ${M5_INPUT_PATH:-../standalone/input}
+        target: /member5-input
+        read_only: true
+        bind:
+          create_host_path: false
+    command: [bash]
+volumes:
+  pseudo-data:

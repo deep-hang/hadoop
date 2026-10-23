@@ -1,5 +1,26 @@
 # 5 号：单机与伪分布式
 
+## 统一操作与可视化核验
+
+新增独立的 Python 3.10+ 标准库入口，支持中文菜单、自动运行 ID、运行摘要、同一输入双模式对照、历史复验、HDFS 快捷查看和离线 HTML 报告。Windows 可双击 `modes/standalone/console.cmd`；完整命令、记录格式及使用边界见[统一入口说明](CONSOLE.md)。
+
+本轮真实测试、环境、修复记录及未验证范围见[增强入口验收记录](CONSOLE-ACCEPTANCE.md)。
+
+原有基础入口继续可用；本轮不新增持久化演示入口，原持久化测试仍保留。不涉及 PPT/视频。新增实现继续限定在成员 5 的目录，远端推送和 PR 必须等待用户核验同意。
+
+## 已实现入口与本轮交付
+
+本轮完成代码、配置、测试和运行文档，PPT/视频留待后续。本模块独立使用公共镜像，采用“本地文件＋本地 MapReduce”和“单节点 HDFS＋本地 MapReduce”两种方式，不依赖其他成员的正式集群，也不修改其开发文件。
+
+- [单机操作说明](../../../modes/standalone/README.md)：固定输入、运行、结果检查、shell。
+- [伪分布式操作说明](../../../modes/pseudo/README.md)：显式初始化、启动、HDFS、重启、停止、数据保留。
+- [单机测试](../../../tests/standalone/README.md)与[伪分布式测试](../../../tests/pseudo/README.md)：完整自动验证、隔离和证据路径。
+- [实验记录与交接](EXPERIMENTS.md)：环境、实际测试结果、模式对比和复现方式。
+
+两个模式均已扩展 `run <run-id> [宿主机输入文件或目录]`：省略路径使用原两句样例，指定路径则展示任意 UTF-8 文本的词频，并根据保存的本次输入校验；完整规则和示例见模式 README。PPT/视频及远端推送仍等待后续安排，当前由用户先核验。
+
+以下保留任务和协作要求；实际执行使用上述已实现入口。代码全部新增；既有文件仅更新成员 5 自己的五份 README。功能分支为 `feat/standalone-pseudo`，提交到个人 fork，再向团队 `deep-hang/hadoop:main` 提 PR，由组长审核合并。
+
 ## 1. 你要完成什么
 
 交付两套可区分、可复现的运行方式：单机模式用本地文件执行 Hadoop 作业；伪分布式在一个节点里运行独立的 NameNode/DataNode 进程，完成 HDFS 操作。两者不能只展示“进入了 Docker”。
@@ -42,7 +63,7 @@ cat /workspace/runtime/standalone-demo/output-001/part-r-*
 4. 检查 jps 有 NameNode、DataNode，dfsadmin -report 有 1 个 Live DataNode。完成 mkdir、put、ls、cat；在自己的 Web 端口查看节点。
 5. 配合单节点 HDFS，可先用本地 MapReduce 执行示例；若增加单节点 YARN，需显式配置并启动 ResourceManager/NodeManager，再验证 1 个 RUNNING 节点。说明里写清实际使用哪一种计算方式。
 6. 重启自己的伪分布式环境，读回原文件；确认不影响完全分布式卷与端口。
-7. 在 modes/pseudo/README.md 补上从电脑终端启动、进入、验证、重启、停止的完整命令。**目前这些入口尚待你实现，不要引用不存在的脚本让其他人运行。**
+7. 在 modes/pseudo/README.md 记录从电脑终端启动、进入、验证、重启、停止的完整命令；本轮已提供管理入口，实际验收记录见上方实验文档。
 
 建议宿主机 Web 端口使用 19870（NameNode）、如启用 YARN 则用 18088，并在自己的编排和说明中一致记录，绑定 127.0.0.1。
 
