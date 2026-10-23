@@ -143,6 +143,9 @@ class EnhancedTests(unittest.TestCase):
             _,live=self.record(mode,'paired');live['verification']='failed';atomic_json(location(mode,'paired',self.manager.home)/'record.json',live)
         data=comparison(self.manager.home,'paired',row)
         self.assertTrue(data['passed'])
+        row['children'][1]['snapshot']['evidence']['manifest']=[dict(name='different.txt',bytes=3,sha256='different')]
+        self.assertFalse(comparison(self.manager.home,'paired',row)['passed'],'a saved true flag cannot override contradictory input evidence')
+        row['children'][1]['snapshot']['evidence']['manifest']=manifest
         row['children'].pop();self.assertFalse(comparison(self.manager.home,'paired',row)['passed'])
 
     def test_comparison_missing_side_not_empty_result(self):

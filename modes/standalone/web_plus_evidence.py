@@ -111,9 +111,10 @@ def comparison(home, identifier, record, timeline=()):
     available = len(output) == 2 and not any(errors.values())
     rows = differences(output['standalone'], output['pseudo']) if available else []
     independent = len(children) == 2 and all(r.get('verification') == 'passed' for r in children.values())
-    inputs = record.get('inputs_equal')
-    if inputs is None and len(children) == 2 and all(r.get('evidence', {}).get('manifest') is not None for r in children.values()):
-        inputs = all(r['evidence']['manifest'] == record.get('manifest') for r in children.values())
+    inputs = None
+    if record.get('manifest') is not None and len(children) == 2 and all(r.get('evidence', {}).get('manifest') is not None for r in children.values()):
+        inputs = all(r['evidence']['manifest'] == record['manifest'] for r in children.values())
+        if record.get('inputs_equal') is False:inputs=False
     passed = independent and inputs is True and available and not rows and record.get('outputs_equal') is True
     timings = []
     for mode in ('compare', 'standalone', 'pseudo'):
