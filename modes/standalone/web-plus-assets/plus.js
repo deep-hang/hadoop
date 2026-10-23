@@ -46,11 +46,11 @@ function recovery(info,mode,id){
   if(mode&&id)row.append(btn('恢复输入后重新运行',async()=>{try{await restoreInput(mode,id);}catch(e){failure(e);}}));
   append(c,row,el('p','muted','重跑会创建新运行 ID，原有输入、输出和失败记录继续保留。'));return c;
 }
-function storageCard(mode,id,data){
+function storageCard(mode,id,data,pending=false){
   const c=card(names[mode]+' · 数据存放在哪里');
   append(c,el('p','flow',mode==='standalone'?'网页输入 → 保存快照 → 本地文件 → 本地 MapReduce → 本地输出':'网页输入 → 保存快照 → HDFS 上传 → 本地 MapReduce → HDFS 输出'));
   const nav=el('div','row');for(const [area,label]of [['input','查看实际输入'],['output','查看实际输出']])nav.append(link(label,fileHref(mode,area,id),'button'));c.append(nav);
-  if(!data?.available){c.append(el('p','muted',data?.error||data?.reason||'此历史运行未记录存储挂载证据；不使用当前环境补写历史。'));return c;}
+  if(!data?.available){c.append(el('p','muted',data?.error||data?.reason||(pending?'本次运行尚未采集存储证据，输入准备后将显示实际挂载信息。':'此历史运行未记录存储挂载证据；不使用当前环境补写历史。')));return c;}
   append(c,el('p','muted',`本次采集：${time(data.collected_at)} · 客户端：${data.client}`));
   const details=el('details','details');details.dataset.key=mode+'/storage';append(details,el('summary','','展开实际存储位置与挂载证据'));
   if(mode==='standalone'){
