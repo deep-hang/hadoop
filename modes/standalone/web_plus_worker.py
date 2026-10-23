@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import uuid
 
-from console_store import ROOT, atomic_json, load, location, now
+from console_store import ROOT, atomic_json, load, location, now, reserve, snapshot
 from console import Console
 from web_worker import WebBackend, WebConsole
 from web_plus_evidence import (CheckedFault, comparison, diagnostic, enrich_report,
@@ -20,11 +20,17 @@ class PlusBackend(WebBackend):
         self.home = Path(request['home'])
         self.storages = set()
 
+    def command(self, *args, **kwargs):
+        try:return super().command(*args,**kwargs)
+        except Exception as exc:
+            if not getattr(exc,'failed_phase',None):exc.failed_phase=self.state.get('phase') or self.stage
+            raise
+
     def checked(self, code, args, timeout=30):
         try:
             return self.command(args, timeout)
         except (OSError, RuntimeError, TimeoutError) as exc:
-            raise CheckedFault(code, str(exc)) from exc
+            raise CheckedFault(code, str(exc),getattr(exc,'failed_phase',self.stage)) from exc
 
     def doctor(self, modes=('standalone', 'pseudo')):
         if self.checked('DOCKER_UNAVAILABLE', ['docker','info','--format','{{.OSType}}']).strip() != 'linux':
@@ -36,10 +42,11 @@ class PlusBackend(WebBackend):
         return super().doctor(modes)
 
     def ready(self):
+        self.checked('DOCKER_UNAVAILABLE',['docker','info','--format','{{.OSType}}'])
         try:
             return super().ready()
         except (RuntimeError, OSError, TimeoutError) as exc:
-            raise CheckedFault('HDFS_NOT_READY', str(exc)) from exc
+            raise CheckedFault('HDFS_NOT_READY', str(exc),'HDFS 就绪检查') from exc
 
     def environment_check(self):
         data = dict(checked_at=now(), docker='unknown', image='unknown', hdfs='unknown')
@@ -93,6 +100,7 @@ class PlusBackend(WebBackend):
             data.update(container_input='/workspace/runtime/member5/standalone/'+run+'/input',
                         container_output='/workspace/runtime/member5/standalone/'+run+'/output',
                         host_run=runtime['Source'].rstrip('/\\')+'/'+run,
+                        host_workspace_run=str(ROOT/'runtime/member5/standalone'/run),
                         mount_note='宿主机来源是 Docker 引擎实际报告值；Windows 可能显示共享目录的 Linux 表达形式')
         else:
             ids=self.command(['docker','ps','--filter','label=com.docker.compose.project='+self.projects['pseudo'],
@@ -123,6 +131,11 @@ class PlusBackend(WebBackend):
 
 
 class PlusConsole(WebConsole):
+    def existing(self, mode, run_id):
+        if mode=='pseudo':
+            self.backend.ready()
+        return super().existing(mode,run_id)
+
     def save(self, folder, record):
         retry=self.backend.request.get('retry_of')
         if retry and self.backend.request['action'] in ('run','compare'):
@@ -146,13 +159,24 @@ class PlusConsole(WebConsole):
             raise
         except Exception as exc:
             self.diagnose(mode,folder,record)
-            raise CheckedFault('RESULT_MISMATCH',str(exc)) from exc
+            raise CheckedFault('RESULT_MISMATCH',str(exc),'结果验证') from exc
 
     def run(self, mode, source=None, run_id=None):
         try:
             return super().run(mode,source,run_id)
         except Exception as exc:
             matches=[r for r in self.backend.state['results'] if r['mode']==mode]
+            if not matches and run_id and not location(mode,run_id,self.home).exists():
+                folder,record=reserve(mode,run_id,self.home)
+                record.update(status='failed',ended=now(),error=str(exc),phase='环境预检查',execution='not_started')
+                try:
+                    record['manifest']=snapshot(source,folder/'input')
+                    record['input_files']=len(record['manifest'])
+                    record['input_bytes']=sum(r['bytes'] for r in record['manifest'])
+                except Exception as snapshot_error:record['input_recovery_error']=str(snapshot_error)
+                self.save(folder,record)
+                self.backend.event(mode,'environment','failed')
+                matches=[dict(mode=mode,id=run_id)]
             if matches:
                 identifier=matches[-1]['id']; folder=location(mode,identifier,self.home)
                 record=load(mode,identifier,self.home)
@@ -161,12 +185,16 @@ class PlusConsole(WebConsole):
                     if not latest(self.home,mode,identifier,'diagnostic'): self.diagnose(mode,folder,record)
                     code='RESULT_MISMATCH'
                 else: code=getattr(exc,'error_code',None)
-                save_evidence(self.home,mode,identifier,'failure',failure_info(exc,code,record.get('phase')))
-                if code and not getattr(exc,'error_code',None):raise CheckedFault(code,str(exc)) from exc
+                failed_phase=getattr(exc,'failed_phase',None) or record.get('phase')
+                save_evidence(self.home,mode,identifier,'failure',failure_info(exc,code,failed_phase))
+                if code and not getattr(exc,'error_code',None):raise CheckedFault(code,str(exc),failed_phase) from exc
             raise
 
     def hdfs(self, action, area='input', run_id='', filename=None):
-        if action=='cat': return super().hdfs(action,area,run_id,filename)
+        self.backend.ready()
+        if action=='cat':
+            raw=self.backend.inside('pseudo','bash','/workspace/modes/standalone/web-plus-inspect.sh','preview',area,run_id,filename,timeout=90)
+            data=json.loads(raw);data['collected_at']=now();return data
         raw=self.backend.inside('pseudo','bash','/workspace/modes/standalone/web-plus-inspect.sh','ls',area,run_id,timeout=90)
         data=json.loads(raw);data['collected_at']=now()
         known={}
@@ -193,13 +221,13 @@ class PlusConsole(WebConsole):
         except Exception as exc:
             self.backend.event(record['mode'],'report','failed')
             record.update(report_status='failed',report_error=str(exc));self.save(folder,record)
-            raise CheckedFault('REPORT_FAILED',str(exc)) from exc
+            raise CheckedFault('REPORT_FAILED',str(exc),'报告生成') from exc
 
 
 def main(task):
     task=Path(task);request=json.loads((task/'request.json').read_text(encoding='utf-8'))
     backend=PlusBackend(task,request);app=PlusConsole(backend,Path(request['home']))
-    status,error,code='success',None,None
+    status,error,code,failed_phase='success',None,None,None
     try:
         action=request['action']
         if action=='run': app.run(request['mode'],request['source'],request['run_id'])
@@ -220,7 +248,7 @@ def main(task):
         elif action=='discover':backend.state['data']=app.history(limit=100000)
         else:raise ValueError('不支持的操作')
     except KeyboardInterrupt as exc:status,error='interrupted',str(exc) or '已中断'
-    except BaseException as exc:status,error,code='failed',str(exc),getattr(exc,'error_code',None)
+    except BaseException as exc:status,error,code,failed_phase='failed',str(exc),getattr(exc,'error_code',None),getattr(exc,'failed_phase',None)
     finally:
         backend.cancel_enabled=False
         errors=[]
@@ -229,7 +257,7 @@ def main(task):
             except Exception as exc:errors.append(str(exc))
         if errors:status='failed';error=(error or '')+'\n清理无法确认：'+'\n'.join(errors)
         if error:
-            info=failure_info(error,code,backend.state.get('phase'));backend.state['failure']=info
+            info=failure_info(error,code,failed_phase or backend.state.get('phase'));backend.state['failure']=info
             mode=request.get('mode');identifier=request.get('run_id')
             if mode and identifier:save_evidence(app.home,mode,identifier,'failure',info)
         backend.state.update(status=status,ended=now(),error=error,cleanup_errors=errors)

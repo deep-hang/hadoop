@@ -8,7 +8,7 @@ async function inlineTask(body,panel,version){
   while(version===routeVersion){
     const state=await api(query('/api/task',{id:created.id}));
     if(version!==routeVersion)return null;
-    if(terminal.has(state.status))return state;
+    if(terminal.has(state.status)){for(let n=0;n<10;n++){if((await api('/api/active')).id!==created.id)break;await new Promise(resolve=>setTimeout(resolve,200));}return state;}
     panel.replaceChildren(el('p','muted',`正在${body.action==='service'?'启动 HDFS':'检查或读取'}…… ${state.phase||''}`),link('查看当前任务','#/task/'+created.id));
     await new Promise(resolve=>setTimeout(resolve,1000));
   }
@@ -18,11 +18,12 @@ async function attachEnvironment(parent,version,changed=()=>{}){
   const box=el('section','environment-strip'),status=el('div','row'),actions=el('div','row'),progress=el('div');
   append(box,el('h3','','当前运行环境'),status,actions,progress);parent.prepend(box);
   async function refresh(){if(version!==routeVersion||document.hidden)return;try{const data=await api('/api/environment');if(version!==routeVersion)return;envState=data;status.replaceChildren();for(const [label,value]of [['Docker',data.docker],['统一镜像',data.image],['HDFS',data.hdfs]]){const item=append(el('div','env-item'),el('small','',label),el('strong','',envLabels[value]||value));item.dataset.state=value;status.append(item);}status.append(el('small','muted',`轻量检查：${time(data.checked_at)}\n完整检查：${time(data.full?.checked_at)}${data.stale?' · 待刷新':''}`));actions.replaceChildren();const check=btn('刷新完整检查',()=>perform({action:'environment'}));check.disabled=!!data.active||inlineBusy;actions.append(check);if(data.active)actions.append(link('有任务正在执行 →','#/task/'+data.active.id));else if(data.docker==='ready'&&data.image==='ready'&&data.hdfs!=='ready'){const up=btn('启动 HDFS',()=>perform({action:'service',operation:'up'}),'primary');up.disabled=inlineBusy;actions.append(up);}if(data.error)actions.append(el('small','muted',data.error));changed();if(!autoEnvironment&&!data.full&&!data.active){autoEnvironment=true;perform({action:'environment'});}}catch(e){status.replaceChildren(el('p','error-box','状态获取失败：'+e.message));envState=null;changed();}}
-  async function perform(body){if(inlineBusy)return;inlineBusy=true;changed();try{const result=await inlineTask(body,progress,version);if(result){progress.replaceChildren();if(result.status!=='success')append(progress,recovery(result.failure),el('p','error-box',result.error));else progress.append(el('p','muted',body.action==='service'?'服务操作完成。确认 HDFS 已就绪后，可继续提交当前输入。':'完整检查结束，当前结果已更新。'));}}catch(e){progress.replaceChildren(el('p','error-box',e.message));if(e.task_id)progress.append(link('查看当前任务','#/task/'+e.task_id));}finally{inlineBusy=false;await refresh();changed();}}
+  async function perform(body){if(inlineBusy)return;inlineBusy=true;for(const b of actions.querySelectorAll('button'))b.disabled=true;changed();try{const result=await inlineTask(body,progress,version);if(result){progress.replaceChildren();if(result.status!=='success')append(progress,recovery(result.failure),el('p','error-box',result.error));else progress.append(el('p','muted',body.action==='service'?'服务操作完成。确认 HDFS 已就绪后，可继续提交当前输入。':'完整检查结束，当前结果已更新。'));}}catch(e){progress.replaceChildren(el('p','error-box',e.message));if(e.task_id)progress.append(link('查看当前任务','#/task/'+e.task_id));}finally{inlineBusy=false;await refresh();changed();}}
   await refresh();envTimer=setInterval(refresh,10000);
 }
 function recovery(info,mode,id){
   const c=card('原因与下一步'),data=info||{title:'原因尚未分类',original:'请查看原始错误和阶段日志',actions:['logs']};
+  if(data.resolved)c.append(el('p','muted','此前失败已在后续操作中恢复；下方保留历史原因与采集时间。'));
   append(c,el('h3','',data.title),el('p','muted',`失败阶段：${data.phase||'未记录'} · 证据时间：${time(data.collected_at)}`),el('p','break',data.original||''));
   const row=el('div','row');
   for(const action of data.actions||[]){
@@ -44,9 +45,9 @@ function storageCard(mode,id,data){
   const nav=el('div','row');for(const [area,label]of [['input','查看实际输入'],['output','查看实际输出']])nav.append(link(label,fileHref(mode,area,id),'button'));c.append(nav);
   if(!data?.available){c.append(el('p','muted',data?.error||data?.reason||'此历史运行未记录存储挂载证据；不使用当前环境补写历史。'));return c;}
   append(c,el('p','muted',`本次采集：${time(data.collected_at)} · 客户端：${data.client}`));
-  const details=el('details','details');append(details,el('summary','','展开实际存储位置与挂载证据'));
+  const details=el('details','details');details.dataset.key=mode+'/storage';append(details,el('summary','','展开实际存储位置与挂载证据'));
   if(mode==='standalone'){
-    details.append(table(['位置','实际记录'],[['容器输入',data.container_input],['容器输出',data.container_output],['宿主机运行目录（Docker 报告）',data.host_run],['计算',data.compute]]));
+    details.append(table(['位置','实际记录'],[['容器输入',data.container_input],['容器输出',data.container_output],['本机仓库运行目录',data.host_workspace_run],['挂载来源（Docker 实际报告）',data.host_run],['计算',data.compute]]));
     details.append(el('p','muted',data.mount_note));
   }else{
     details.append(table(['位置','实际记录'],[['HDFS 输入',data.hdfs_input],['HDFS 输出',data.hdfs_output],['NameNode 元数据目录',data.configuration?.['dfs.namenode.name.dir']],['DataNode 数据块目录',data.configuration?.['dfs.datanode.data.dir']],['文件系统',data.configuration?.['fs.defaultFS']],['副本数',data.configuration?.['dfs.replication']],['计算',data.compute]]));
@@ -57,7 +58,7 @@ function storageCard(mode,id,data){
 }
 async function differencePanel(mode,id,version){
   const c=card('真实输出差异诊断'),controls=el('div','row'),search=el('input'),body=el('div');c.dataset.diagnostic='true';search.type='search';search.placeholder='搜索全部差异';search.setAttribute('aria-label','搜索差异');append(controls,search,link('下载差异 TSV',query('/api/download',{mode,id,kind:'diff'}),'button'));append(c,controls,body);let page=1;
-  async function refresh(){const data=await api(query('/api/diagnostic',{mode,id,q:search.value,page}));if(version!==routeVersion)return;body.replaceChildren();append(body,el('p','muted',`诊断时间：${time(data.collected_at)}。${data.actual_source||''}`));if(!data.available){body.append(el('p','error-box',data.reason||'无法取得当前真实输出'));$('a',controls).hidden=true;return;}append(body,el('p','',`成功标记：${data.success_marker?'存在':'缺失'} · 期望总词数：${data.expected_total} · 实际总词数：${data.actual_total}`),el('p','muted',data.expected_source));for(const error of data.errors||[])body.append(el('p','error-box',`第 ${error.line} 行：${error.problem} ${error.text||''}`));body.append(table(['词语','期望','实际','差值','问题'],data.rows.map(r=>[r.word,r.expected,r.actual,r.delta,r.kind])));append(body,el('p','muted',`共 ${data.total} 项差异，匹配 ${data.matched} 项`),pager(data,p=>{page=p;refresh().catch(failure);}));}
+  async function refresh(){const data=await api(query('/api/diagnostic',{mode,id,q:search.value,page}));if(version!==routeVersion)return;body.replaceChildren();append(body,el('p','muted',`诊断采集时间：${time(data.collected_at)}。${data.actual_source||''}。诊断保留采集时的结果，当前验证状态以上方为准。`));if(!data.available){body.append(el('p','error-box',data.reason||'无法取得当前真实输出'));$('a',controls).hidden=true;return;}append(body,el('p','',`成功标记：${data.success_marker?'存在':'缺失'} · 期望总词数：${data.expected_total} · 实际总词数：${data.actual_total}`),el('p','muted',data.expected_source));for(const error of data.errors||[])body.append(el('p','error-box',`第 ${error.line} 行：${error.problem} ${error.text||''}`));body.append(table(['词语','期望','实际','差值','问题'],data.rows.map(r=>[r.word,r.expected,r.actual,r.delta,r.kind])));append(body,el('p','muted',`共 ${data.total} 项差异，匹配 ${data.matched} 项`),pager(data,p=>{page=p;refresh().catch(failure);}));}
   search.onchange=()=>{page=1;refresh().catch(failure);};await refresh();return c;
 }
 async function comparisonPanel(id,version){
@@ -72,17 +73,20 @@ async function comparisonPanel(id,version){
 }
 async function fileBrowser(mode,version){
   const args=new URL(location.hash.slice(1),location.origin).searchParams,area=args.get('area')||'input',id=args.get('id')||'',file=args.get('file')||'',q=args.get('q')||'';let page=Math.max(1,Number(args.get('page'))||1);
+  const rootPage=id?Math.max(1,Number(args.get('root_page'))||1):page,rootQuery=id?(args.get('root_q')||''):q;
+  function navHref(runId,fileName='',p=1,search=''){return fileHref(mode,area,runId,fileName,p,search)+'&'+new URLSearchParams({root_page:rootPage,root_q:rootQuery});}
   title('STORAGE EXPLORER',mode==='pseudo'?'HDFS 文件浏览':'本地作业文件浏览','只读查看成员 5 的实际文件；预览最多 64 KiB / 200 行。');
-  const c=card(),nav=el('div','row'),view=el('div');append(nav,link('输入目录',fileHref(mode,'input'),area==='input'?'button primary':'button'),link('输出目录',fileHref(mode,'output'),area==='output'?'button primary':'button'));append(c,nav,view);main.append(c);
+  const c=card(),nav=el('div','row'),view=el('div');append(nav,link('输入目录',fileHref(mode,'input',mode==='standalone'?id:''),area==='input'?'button primary':'button'),link('输出目录',fileHref(mode,'output',mode==='standalone'?id:''),area==='output'?'button primary':'button'));append(c,nav,view);main.append(c);
   if(mode==='standalone'&&!id){view.append(el('p','muted','请从运行结果的“查看实际输入／输出”进入本地目录。'));return;}
-  const crumbs=el('div','breadcrumbs');append(crumbs,link(area==='input'?'输入':'输出',fileHref(mode,area)));if(id)append(crumbs,el('span','','/'),link(id,fileHref(mode,area,id)));if(file)append(crumbs,el('span','','/'),el('span','',file));c.insertBefore(crumbs,view);
+  const crumbs=el('div','breadcrumbs');append(crumbs,link(mode==='standalone'?'运行历史':area==='input'?'输入':'输出',mode==='standalone'?'#/history':fileHref(mode,area,'','',rootPage,rootQuery)));if(id)append(crumbs,el('span','','/'),link(id,navHref(id,'',page,q)));if(file)append(crumbs,el('span','','/'),el('span','',file));c.insertBefore(crumbs,view);
   const key=JSON.stringify([mode,area,id,file]);
   async function loadData(force=false){let data=filesCache.get(key);if(!data||force){view.replaceChildren(el('p','muted','正在读取实际目录……'));try{const state=await inlineTask({action:mode==='pseudo'?'hdfs':'local',operation:file?'cat':'ls',area,run_id:id,filename:file||undefined},view,version);if(!state)return;if(state.status!=='success'){view.replaceChildren(el('p','error-box',state.error||'读取失败'),recovery(state.failure));return;}data=state.data;filesCache.set(key,data);}catch(e){view.replaceChildren(el('p','error-box',e.message));if(e.task_id)view.append(link('查看正在执行的任务','#/task/'+e.task_id));view.append(btn('重试读取',()=>loadData(true)));return;}}
     if(version!==routeVersion)return;view.replaceChildren(el('p','muted',`实际文件系统：${data.fs} · 读取时间：${time(data.collected_at)}`),btn('刷新实际数据',()=>loadData(true)));
+    if(data.exists===false){view.append(el('p','error-box',file?'文件不存在，请刷新目录查看实际文件。':'目录不存在，可能尚无对应运行数据。'));return;}
     if(file){view.append(el('pre','file-preview',data.text||'（空文件）'));if(data.truncated)view.append(el('p','muted','预览已截断：最多 64 KiB / 200 行。'));return;}
     const entries=(data.files||[]).slice();if(!id){const search=el('input');search.type='search';search.placeholder='按运行 ID 搜索';search.value=q;search.setAttribute('aria-label','搜索运行目录');search.onchange=()=>{location.hash=fileHref(mode,area,'','',1,search.value);};view.append(search);entries.sort((a,b)=>(Date.parse(b.run_started)||b.modified_ms)-(Date.parse(a.run_started)||a.modified_ms)||a.name.localeCompare(b.name));}else entries.sort((a,b)=>a.name.localeCompare(b.name));
     const filtered=entries.filter(r=>!q||r.name.toLowerCase().includes(q.toLowerCase())),pages=Math.max(1,Math.ceil(filtered.length/20));page=Math.min(page,pages);
-    const rows=filtered.slice((page-1)*20,page*20).map(r=>[r.name,r.directory?'目录':'文件',r.bytes,time(r.run_started||new Date(r.modified_ms).toISOString())+(r.time_source?' · '+r.time_source:''),r.directory?(id?el('span','muted','不支持嵌套目录'):link('进入运行目录',fileHref(mode,area,r.name))):link('预览文件',fileHref(mode,area,id,r.name,page,q))]);view.append(table(['名称','类型','字节','时间','操作'],rows));view.append(pager({page,pages},p=>{location.hash=fileHref(mode,area,id,'',p,q);}));
+    const rows=filtered.slice((page-1)*20,page*20).map(r=>[r.name,r.directory?'目录':'文件',r.bytes,time(r.run_started||new Date(r.modified_ms).toISOString())+(r.time_source?' · '+r.time_source:''),r.directory?(id?el('span','muted','不支持嵌套目录'):link('进入运行目录',navHref(r.name))):(id?link('预览文件',navHref(id,r.name,page,q)):el('span','muted','请先选择运行目录'))]);view.append(table(['名称','类型','字节','时间','操作'],rows));view.append(pager({page,pages},p=>{location.hash=id?navHref(id,'',p,q):fileHref(mode,area,'','',p,q);}));
   }
   await loadData();
 }

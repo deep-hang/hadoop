@@ -65,7 +65,7 @@ class PlusManager(Manager):
                 state=read_json(path)
                 request=read_json(path.parent/'request.json')
                 item=state.get('environment') or (state.get('data') if request['action'] in ('environment','doctor') else None)
-                if item and (deep is None or item.get('checked_at','')>deep.get('checked_at','')):deep=item
+                if item and item.get('checked_at') and (deep is None or item['checked_at']>deep['checked_at']):deep=item
             except (OSError,ValueError,KeyError):continue
         result['full']=deep
         stamp=deep.get('checked_at') if deep else None
@@ -101,6 +101,11 @@ class PlusManager(Manager):
         record=super().result(mode,identifier)
         record['storage']=latest(self.home,mode,identifier,'storage')
         record['failure']=latest(self.home,mode,identifier,'failure')
+        if record['failure']:
+            failure=record['failure'];stamp=failure.get('collected_at','')
+            recovered=record.get('verification')=='passed' and record.get('result_captured_at','')>stamp
+            recovered_report=failure.get('code')=='REPORT_FAILED' and record.get('report_status')=='success' and any(r.get('generated_at','')>stamp for r in record.get('reports',[]))
+            failure['resolved']=recovered or recovered_report
         record['diagnostic_available']=latest(self.home,mode,identifier,'diagnostic') is not None
         for child in record.get('children_records',[]):
             child['storage']=latest(self.home,child['mode'],identifier,'storage')

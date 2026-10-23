@@ -11,9 +11,10 @@ from web_core import ApiError, bounded, read_json
 
 
 class CheckedFault(RuntimeError):
-    def __init__(self, code, message):
+    def __init__(self, code, message, phase=None):
         super().__init__(message)
         self.error_code = code
+        self.failed_phase = phase
 
 
 def supplementary(home, mode, identifier):

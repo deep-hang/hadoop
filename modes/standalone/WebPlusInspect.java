@@ -16,7 +16,11 @@ public final class WebPlusInspect {
                 System.setOut(new PrintStream(expected,true,"UTF-8"));
                 InputCounts.main(new String[]{"file:///member5-input"});
             } finally { System.setOut(previous); }
-            try (FileSystem fs=FileSystem.get(ConsoleInspect.CONF)) {
+            // Host edits can leave Hadoop's local .crc stale. Diagnostic reads
+            // inspect actual bytes, just as the original standalone verifier's
+            // cat does; the authoritative verifier and HDFS checks stay intact.
+            FileSystem storage=mode.equals("standalone")?FileSystem.getLocal(ConsoleInspect.CONF).getRawFileSystem():FileSystem.get(ConsoleInspect.CONF);
+            try (FileSystem fs=storage) {
                 Path output=mode.equals("pseudo")?ConsoleInspect.hdfsPath("output",id):new Path("/workspace/runtime/member5/standalone/"+id+"/output");
                 ConsoleInspect.safe(fs,output);
                 StringBuilder actual=new StringBuilder(); int parts=0;
@@ -34,12 +38,21 @@ public final class WebPlusInspect {
                 }
                 System.out.println(ConsoleInspect.json(ConsoleInspect.obj("expected_text",expected.toString("UTF-8"),"actual_text",actual.toString(),
                     "output_exists",fs.exists(output),"success_marker",fs.isFile(new Path(output,"_SUCCESS")),"part_count",parts,
-                    "output_path",output.toString(),"fs",ConsoleInspect.CONF.get("fs.defaultFS"))));
+                    "output_path",output.toString(),"fs",ConsoleInspect.CONF.get("fs.defaultFS"),
+                    "read_method",mode.equals("standalone")?"actual local file bytes (diagnostic only)":"Hadoop HDFS API")));
+            }
+        } else if (action.equals("preview")) {
+            try { ConsoleInspect.main(args); }
+            catch(FileNotFoundException missing) {
+                System.out.println(ConsoleInspect.json(ConsoleInspect.obj("exists",false,"path",missing.getMessage(),"fs",ConsoleInspect.CONF.get("fs.defaultFS"))));
             }
         } else if (action.equals("ls")) {
             try (FileSystem fs=FileSystem.get(ConsoleInspect.CONF)) {
                 Path path=ConsoleInspect.hdfsPath(args[1],args[2]); ConsoleInspect.safe(fs,path);
-                if(!fs.exists(path)) throw new FileNotFoundException(path.toString());
+                if(!fs.exists(path)) {
+                    System.out.println(ConsoleInspect.json(ConsoleInspect.obj("exists",false,"files",new ArrayList<>(),"path",path.toString(),"fs",ConsoleInspect.CONF.get("fs.defaultFS"))));
+                    return;
+                }
                 List<Object> rows=new ArrayList<>();
                 for(FileStatus file:fs.listStatus(path)) {
                     ConsoleInspect.safe(fs,file.getPath());

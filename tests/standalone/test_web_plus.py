@@ -70,6 +70,12 @@ class EnhancedTests(unittest.TestCase):
         atomic_json(folder/'state.json',dict(data=dict(docker='ready',image='ready',hdfs='ready',checked_at=old)))
         data=self.manager.environment_status();self.assertTrue(data['stale']);self.assertNotEqual(data['hdfs'],'ready')
 
+    def test_old_doctor_data_cannot_impersonate_new_complete_check(self):
+        folder=self.manager.root/'tasks'/'legacy';folder.mkdir()
+        atomic_json(folder/'request.json',dict(action='doctor'))
+        atomic_json(folder/'state.json',dict(data=dict(image_id='old-image',pseudo=dict(live_datanodes=1))))
+        self.assertIsNone(self.manager.environment_status()['full'])
+
     def test_docker_unavailable_keeps_dependencies_unknown(self):
         with self.manager.light_lock:self.manager.light=dict(docker='unavailable',image='unknown',hdfs='unknown',checked_at=now())
         data=self.http('/api/environment')[1]
