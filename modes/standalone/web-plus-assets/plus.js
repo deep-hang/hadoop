@@ -1,6 +1,13 @@
 'use strict';
 const envLabels={ready:'已就绪',unavailable:'不可连接',missing:'缺失',unknown:'未确认',checking:'检查中',stopped:'已停止',running_unconfirmed:'运行中，待完整检查',not_ready:'未通过就绪检查',starting:'启动中'};
 const filesCache=new Map();
+async function restoreInput(mode,id){
+  const input=await api(query('/api/input',{mode,id}));
+  let file=null;
+  if(input.kind==='file'&&input.base64!==undefined){const raw=atob(input.base64),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));file={name:input.name||'input.txt',size:bytes.length,bytes,text:input.text};}
+  draft={text:file?'':input.text,file,mode:mode==='compare'?'standalone':mode,retry_of:{mode,id}};
+  location.hash='/';
+}
 function blocked(hdfs){return !envState||!!envState.active||envState.docker!=='ready'||envState.image!=='ready'||(hdfs&&(envState.hdfs!=='ready'||envState.stale));}
 function fileHref(mode,area,id='',file='',page=1,q=''){return '#/'+(mode==='pseudo'?'hdfs':'local')+'?'+new URLSearchParams({area,id,file,page,q});}
 async function inlineTask(body,panel,version){
@@ -17,7 +24,7 @@ async function inlineTask(body,panel,version){
 async function attachEnvironment(parent,version,changed=()=>{}){
   const box=el('section','environment-strip'),status=el('div','row'),actions=el('div','row'),progress=el('div');
   append(box,el('h3','','当前运行环境'),status,actions,progress);parent.prepend(box);
-  async function refresh(){if(version!==routeVersion||document.hidden)return;try{const data=await api('/api/environment');if(version!==routeVersion)return;envState=data;status.replaceChildren();for(const [label,value]of [['Docker',data.docker],['统一镜像',data.image],['HDFS',data.hdfs]]){const item=append(el('div','env-item'),el('small','',label),el('strong','',envLabels[value]||value));item.dataset.state=value;status.append(item);}status.append(el('small','muted',`轻量检查：${time(data.checked_at)}\n完整检查：${time(data.full?.checked_at)}${data.stale?' · 待刷新':''}`));actions.replaceChildren();const check=btn('刷新完整检查',()=>perform({action:'environment'}));check.disabled=!!data.active||inlineBusy;actions.append(check);if(data.active)actions.append(link('有任务正在执行 →','#/task/'+data.active.id));else if(data.docker==='ready'&&data.image==='ready'&&data.hdfs!=='ready'){const up=btn('启动 HDFS',()=>perform({action:'service',operation:'up'}),'primary');up.disabled=inlineBusy;actions.append(up);}if(data.error)actions.append(el('small','muted',data.error));changed();if(!autoEnvironment&&!data.full&&!data.active){autoEnvironment=true;perform({action:'environment'});}}catch(e){status.replaceChildren(el('p','error-box','状态获取失败：'+e.message));envState=null;changed();}}
+  async function refresh(){if(version!==routeVersion||document.hidden)return;try{const data=await api('/api/environment');if(version!==routeVersion)return;envState=data;status.replaceChildren();for(const [label,value]of [['Docker',data.docker],['统一镜像',data.image],['HDFS',data.hdfs]]){const item=append(el('div','env-item'),el('small','',label),el('strong','',envLabels[value]||value));item.dataset.state=value;status.append(item);}status.append(el('small','muted',`轻量检查：${time(data.checked_at)}\n完整检查：${time(data.full?.checked_at)}${data.stale?' · 待刷新':''}`));actions.replaceChildren();const check=btn('刷新完整检查',()=>perform({action:'environment'}));check.disabled=!!data.active||inlineBusy;actions.append(check);if(data.active)actions.append(link('有任务正在执行 →','#/task/'+data.active.id));else if(data.docker==='ready'&&data.image==='ready'&&data.hdfs!=='ready'){const up=btn('启动 HDFS',()=>perform({action:'service',operation:'up'}),'primary');up.disabled=inlineBusy;actions.append(up);}if(data.error)actions.append(el('small','muted',data.error));changed();if(!autoEnvironment&&(!data.full||data.stale)&&!data.active){autoEnvironment=true;perform({action:'environment'});}}catch(e){status.replaceChildren(el('p','error-box','状态获取失败：'+e.message));envState=null;changed();}}
   async function perform(body){if(inlineBusy)return;inlineBusy=true;for(const b of actions.querySelectorAll('button'))b.disabled=true;changed();try{const result=await inlineTask(body,progress,version);if(result){progress.replaceChildren();if(result.status!=='success')append(progress,recovery(result.failure),el('p','error-box',result.error));else progress.append(el('p','muted',body.action==='service'?'服务操作完成。确认 HDFS 已就绪后，可继续提交当前输入。':'完整检查结束，当前结果已更新。'));}}catch(e){progress.replaceChildren(el('p','error-box',e.message));if(e.task_id)progress.append(link('查看当前任务','#/task/'+e.task_id));}finally{inlineBusy=false;await refresh();changed();}}
   await refresh();envTimer=setInterval(refresh,10000);
 }
@@ -36,7 +43,7 @@ function recovery(info,mode,id){
     else if(action==='diagnostic'&&mode&&id)row.append(btn('查看完整差异',()=>{const target=document.querySelector('[data-diagnostic]');if(target)target.scrollIntoView({behavior:'smooth'});else location.hash='/run/'+mode+'/'+id;}));
     else if(action==='logs'&&mode&&id)row.append(link('下载原始日志',query('/api/download',{mode,id,kind:'log'}),'button'));
   }
-  if(mode&&id)row.append(btn('恢复输入后重新运行',async()=>{try{const input=await api(query('/api/input',{mode,id}));draft={text:input.text,file:null,mode:mode==='compare'?'standalone':mode,retry_of:{mode,id}};location.hash='/';}catch(e){failure(e);}}));
+  if(mode&&id)row.append(btn('恢复输入后重新运行',async()=>{try{await restoreInput(mode,id);}catch(e){failure(e);}}));
   append(c,row,el('p','muted','重跑会创建新运行 ID，原有输入、输出和失败记录继续保留。'));return c;
 }
 function storageCard(mode,id,data){
@@ -90,5 +97,5 @@ async function fileBrowser(mode,version){
   }
   await loadData();
 }
-function imageHelp(){title('IMAGE PREPARATION','统一镜像准备','按项目公共环境说明准备 hadoop-base:v0.1，完成后重新检查。');const c=card();append(c,el('p','','镜像应包含 Java 1.8.0_442、Hadoop 3.3.6。镜像准备与公共配置以仓库原 README 为准。'),el('p','','本页不自动下载或替换团队镜像。'),taskButton('重新检查环境',{action:'environment'}),link('返回输入','#/','button'));main.append(c);}
+function imageHelp(){title('IMAGE PREPARATION','统一镜像准备','按项目公共环境说明准备 hadoop-base:v0.1，完成后重新检查。');const c=card(),guide=link('打开仓库公共环境与镜像导入说明','/image-guide.txt','button');guide.target='_blank';guide.rel='noopener';append(c,el('p','','镜像应包含 Java 1.8.0_442、Hadoop 3.3.6。镜像准备与公共配置以仓库原 README 为准。'),guide,taskButton('重新检查环境',{action:'environment'}),link('返回输入','#/','button'));main.append(c);}
 boot();

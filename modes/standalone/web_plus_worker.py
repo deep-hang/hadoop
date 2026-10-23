@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import uuid
 
-from console_store import ROOT, atomic_json, load, location, now, reserve, snapshot
+from console_store import ROOT, atomic_json, load, location, now, reserve, snapshot, manifest
 from console import Console
 from web_worker import WebBackend, WebConsole
 from web_plus_evidence import (CheckedFault, comparison, diagnostic, enrich_report,
@@ -145,6 +145,8 @@ class PlusConsole(WebConsole):
     def diagnose(self, mode, folder, record):
         try:
             if not (folder/'input').is_dir(): raise RuntimeError('此记录缺少保存的输入快照')
+            if record.get('manifest') is not None and manifest(folder/'input')!=record['manifest']:
+                raise RuntimeError('保存快照的 SHA-256 已变化，不能计算可信的期望词频')
             raw=self.backend.inside(mode,'bash','/workspace/modes/standalone/web-plus-inspect.sh','diagnose',mode,record['id'],
                                     source=folder/'input',timeout=120)
             data=diagnostic(json.loads(raw))

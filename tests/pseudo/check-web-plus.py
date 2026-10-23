@@ -84,6 +84,9 @@ def main():
         try:
             preview=wait(submit('hdfs',operation='cat',area='input',run_id=identifier,filename=special))['data']
             require(preview['text']=='special text\n','special HDFS filename preview incorrect')
+            pseudo.inside('hdfs','dfs','-put','-f','-','/project/input/member5/'+identifier+'/'+special,input=('line '*40+'\n')*400)
+            clipped=wait(submit('hdfs',operation='cat',area='input',run_id=identifier,filename=special))['data']
+            require(clipped['truncated'] and clipped['bytes_read']<=65536 and len(clipped['text'].splitlines())<=200,'preview exceeds bounds')
         finally:pseudo.inside('hdfs','dfs','-rm','/project/input/member5/'+identifier+'/'+special)
         local=wait(submit('local',operation='ls',area='output',run_id=identifier))['data']
         require(any(r['name']=='_SUCCESS' for r in local['files']),'local file list missing')
@@ -93,6 +96,7 @@ def main():
         try:
             bad=wait(submit('verify',mode='pseudo',run_id=identifier),False)
             require(bad['failure']['code']=='RESULT_MISMATCH','verification failure not classified')
+            require(bad['failure']['phase']=='结果验证','report generation obscured the real failed phase')
             diag=http('/api/diagnostic?mode=pseudo&id='+identifier)[1]
             require(diag['available'] and {'缺失词','多出词','计数差异'}.issubset({r['kind'] for r in diag['rows']}),'full real differences missing')
             require(http('/api/download?mode=pseudo&id='+identifier+'&kind=diff')[0]==200,'difference TSV unavailable')
@@ -108,6 +112,13 @@ def main():
             require({r['problem'] for r in diag['errors']}=={'重复词语','词频格式错误'},'duplicate/malformed output not diagnosed')
         finally:local_part.write_bytes(saved)
         pseudo.mark('duplicate and malformed actual output detected without replacing verified TSV')
+        marker=local_part.parent/'_SUCCESS';marker_bytes=marker.read_bytes();marker.unlink()
+        try:
+            wait(submit('verify',mode='standalone',run_id=identifier),False)
+            diag=http('/api/diagnostic?mode=standalone&id='+identifier)[1]
+            require(diag['available'] and not diag['success_marker'],'missing success marker not diagnosed')
+        finally:marker.write_bytes(marker_bytes)
+        pseudo.mark('real missing success marker fails despite unchanged complete word counts')
         empty=http('/api/inputs',dict(name='空文件 #100%.TXT',base64=''))[1]
         zero=wait(submit('compare',input_id=empty['id']))
         require(http('/api/comparison?id='+zero['run_id'])[1]['passed'],'empty pair misclassified as absent')
@@ -122,6 +133,23 @@ def main():
         require(retry['run_id']!=failed['run_id'],'retry reused old output')
         require(http('/api/result?mode=standalone&id='+retry['run_id'])[1]['retry_of']['id']==failed['run_id'],'retry relation missing')
         pseudo.mark('explicit retry creates new run and preserves parent failure relationship')
+        def client_visible(state):
+            deadline=time.monotonic()+120
+            while time.monotonic()<deadline:
+                row=http('/api/task?id='+state['id'])[1]
+                owned=row.get('clients',[])
+                if owned and owned[-1]['name'] in pseudo.run(['docker','ps','--format','{{.Names}}']).stdout.split():return owned[-1]
+                time.sleep(.3)
+            raise AssertionError('owned enhanced client did not appear')
+        cancel=submit('run',mode='pseudo',input_id=input_row['id']);client_visible(cancel)
+        http('/api/cancel',dict(id=cancel['id']))
+        require(wait(cancel,False)['status']=='interrupted','enhanced cancellation failed')
+        pseudo.inside('bash','/workspace/modes/pseudo/healthcheck.sh')
+        pseudo.mark('enhanced task cancellation removes only its actual client and preserves HDFS')
+        abrupt=submit('run',mode='pseudo',input_id=input_row['id']);client_visible(abrupt);manager.process.kill()
+        require(wait(abrupt,False)['status']=='interrupted','enhanced dead worker not recovered')
+        pseudo.inside('bash','/workspace/modes/pseudo/healthcheck.sh')
+        pseudo.mark('enhanced abnormal worker exit recovers owned client and record without stopping HDFS')
         wait(submit('service',operation='stop'))
         require(http('/api/storage?mode=pseudo&id='+identifier)[1]['available'],'saved storage proof unavailable offline')
         require(http('/api/comparison?id='+identifier)[1]['passed'],'archived proof lost when HDFS stopped')

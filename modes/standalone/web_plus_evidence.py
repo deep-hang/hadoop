@@ -179,8 +179,10 @@ def enrich_report(path, storage, explanation, diagnosis):
     sections = []
     for heading, value in [('数据存放在哪里', storage), ('双模式对照依据', explanation), ('结果诊断', diagnosis)]:
         if value:
-            sections.append('<section><h2>'+heading+'</h2><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+html.escape(json.dumps(value, ensure_ascii=False, indent=2))+'</pre></section>')
+            sections.append('<section class="card"><h2>'+heading+'</h2><pre style="white-space:pre-wrap;overflow-wrap:anywhere">'+html.escape(json.dumps(value, ensure_ascii=False, indent=2))+'</pre></section>')
     if sections:
         text = path.read_text(encoding='utf-8')
-        path.write_text(text.replace('</body>', ''.join(sections)+'</body>'), encoding='utf-8')
+        anchor='</main>' if '</main>' in text else '</body>' if '</body>' in text else None
+        text=text.replace(anchor,''.join(sections)+anchor) if anchor else text+''.join(sections)
+        path.write_text(text, encoding='utf-8')
         atomic_json(path.parent / 'explanation.json', dict(storage=storage, comparison=explanation, diagnostic=diagnosis))

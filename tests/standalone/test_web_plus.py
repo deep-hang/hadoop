@@ -4,6 +4,7 @@ sys.dont_write_bytecode=True
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import json
+import base64
 import tempfile
 import threading
 import unittest
@@ -91,6 +92,13 @@ class EnhancedTests(unittest.TestCase):
         self.assertEqual(len(list((location('standalone','sample',self.manager.home)/'plus').glob('storage-*.json'))),2)
         self.assertEqual(latest(self.manager.home,'standalone','sample','storage')['value'],2)
 
+    def test_recovered_validation_marks_previous_failure_historical(self):
+        folder,row=self.record()
+        save_evidence(self.manager.home,'standalone','sample','failure',dict(code='RESULT_MISMATCH',original='old failure'))
+        row.update(verification='passed',result_captured_at=(datetime.now(timezone.utc)+timedelta(seconds=2)).isoformat())
+        atomic_json(folder/'record.json',row)
+        self.assertTrue(self.manager.result('standalone','sample')['failure']['resolved'])
+
     def test_exact_parser_rejects_duplicate_malformed_zero(self):
         counts,errors=exact_rows('hello\t2\nhello\t3\nbad\nzero\t0\n')
         self.assertEqual(counts,{'hello':2});self.assertEqual(len(errors),3)
@@ -146,6 +154,13 @@ class EnhancedTests(unittest.TestCase):
         atomic_json(folder/'state.json',dict(events=[]))
         self.assertEqual(self.manager.input_preview('standalone','sample')['text'],'saved input')
 
+    def test_empty_and_bom_file_recovery_preserve_exact_bytes(self):
+        folder,row=self.record();(folder/'input').mkdir();source=folder/'input/input.txt'
+        for raw in (b'',b'\xef\xbb\xbfhello\r\n'):
+            source.write_bytes(raw)
+            data=self.manager.input_preview('standalone','sample')
+            self.assertEqual(data['kind'],'file');self.assertEqual(base64.b64decode(data['base64']),raw)
+
     def test_local_scope_and_preview_limits(self):
         for filename in ('../secret','/absolute','a/b','..'):
             with self.assertRaises(ApiError):local_file('input','sample',filename)
@@ -155,6 +170,11 @@ class EnhancedTests(unittest.TestCase):
         path=self.folder/'index.html';path.write_text('<body>report</body>',encoding='utf-8')
         enrich_report(path,dict(name='<script>bad</script>'),None,None)
         text=path.read_text(encoding='utf-8');self.assertNotIn('<script>bad',text);self.assertIn('&lt;script&gt;',text)
+
+    def test_offline_report_without_explicit_body_gets_visible_explanations(self):
+        path=self.folder/'index.html';path.write_text('<html><main>report</main></html>',encoding='utf-8')
+        enrich_report(path,dict(available=True),None,None)
+        self.assertIn('数据存放在哪里',path.read_text(encoding='utf-8'))
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

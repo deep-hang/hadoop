@@ -1,5 +1,6 @@
 """Independent enhanced manager. Original sources are imported, never patched."""
 from datetime import datetime, timezone
+import base64
 import copy
 import json
 import os
@@ -112,16 +113,22 @@ class PlusManager(Manager):
         return record
 
     def input_preview(self, mode, identifier):
-        try:return super().input_preview(mode,identifier)
+        record=self.result(mode,identifier)
+        try:
+            data=super().input_preview(mode,identifier)
+            source=next(p for p in (location(mode,identifier,self.home)/'input').iterdir() if p.is_file() and not p.name.startswith(('.', '_')))
         except (FileNotFoundError,ApiError):
-            record=self.result(mode,identifier)
             task=record.get('task_id')
             if not task:raise ApiError('此记录没有可恢复的输入',404)
             request=read_json(self.task_path(task)/'request.json')
             metadata=request.get('input',{})
             source=bounded(self.root/'inputs'/valid_id(metadata.get('id',''))/'input.txt',self.root/'inputs')
             if source.stat().st_size>self.max_bytes:raise ApiError('历史输入超过上限',413)
-            return dict(text=source.read_bytes().decode('utf-8-sig'),name=metadata.get('name'),bytes=source.stat().st_size)
+            data=dict(text=source.read_bytes().decode('utf-8-sig'),name=metadata.get('name'),bytes=source.stat().st_size)
+        raw=source.read_bytes();metadata=record.get('web_input') or {}
+        data.update(base64=base64.b64encode(raw).decode('ascii'),kind=metadata.get('kind','file'),name=metadata.get('name') or data['name'])
+        if not raw:data['kind']='file'
+        return data
 
     def artifact(self, mode, identifier, kind):
         if kind=='diff':
@@ -180,6 +187,7 @@ class PlusManager(Manager):
                 if operation not in ('ls', 'cat') or area not in ('input', 'output'):
                     raise ApiError('无效 HDFS 查询')
                 run = body.get('run_id', '')
+                if action=='local' and not run:raise ApiError('请选择本地运行 ID')
                 if run: valid_id(run)
                 filename = body.get('filename')
                 if operation == 'cat' and (not run or not filename or filename in ('.', '..') or any(c in filename for c in '/\\:\0')):

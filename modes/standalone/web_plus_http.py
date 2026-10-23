@@ -15,7 +15,7 @@ import threading
 from urllib.parse import parse_qs, urlsplit
 import webbrowser
 
-from console_store import now
+from console_store import ROOT, now
 from web_core import ApiError, read_json
 from web_plus_core import PlusManager as Manager
 
@@ -92,6 +92,8 @@ def make_server(manager, port=19875):
                     return
                 if path == '/api/session':
                     self.send(dict(token=token, max_input_bytes=manager.max_bytes, active=manager.active))
+                elif path == '/image-guide.txt':
+                    self.send((ROOT/'docs/platform-setup.md').read_bytes(),'text/plain; charset=utf-8')
                 elif path == '/api/environment':
                     self.send(manager.environment_status())
                 elif path == '/api/storage':
