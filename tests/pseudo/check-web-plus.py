@@ -51,6 +51,7 @@ def main():
         input_row=http('/api/inputs',dict(text=text))[1]
         failed=wait(submit('run',mode='pseudo',input_id=input_row['id']),False)
         require(failed['status']=='failed' and failed['failure']['code']=='HDFS_NOT_READY','missing HDFS classification')
+        require(any(e['stage']=='environment' and e['status']=='running' for e in failed['events']),'failed preflight lacks actual start event')
         require(not any(e['stage']=='input' and e['status']=='success' for e in failed['events']),'false upload event')
         require(http('/api/input?mode=pseudo&id='+failed['run_id'])[1]['text']==text,'preflight input lost')
         pseudo.mark('structured unavailable-HDFS failure, no implicit init or false upload, saved input recoverable')

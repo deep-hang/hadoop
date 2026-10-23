@@ -165,6 +165,7 @@ class PlusConsole(WebConsole):
 
     def run(self, mode, source=None, run_id=None):
         try:
+            if mode=='pseudo':self.backend.event(mode,'environment','running')
             return super().run(mode,source,run_id)
         except Exception as exc:
             matches=[r for r in self.backend.state['results'] if r['mode']==mode]
