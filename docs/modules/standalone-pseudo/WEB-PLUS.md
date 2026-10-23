@@ -97,4 +97,4 @@ python -B tests/pseudo/check-web-plus.py
 
 第二条使用随机 Compose 项目、专用卷和随机端口，结束后核对归属并清理测试资源。开发环境有 Node 时，可额外执行 `node tests/standalone/test_web_plus_ui.js`；生产运行不依赖 Node。
 
-真实验收结果和未验证范围见本轮新增验收记录。所有提交仅保存在本地，推送及 PR 等待用户核验同意。
+真实验收结果和未验证范围见 [本轮新增验收记录](WEB-PLUS-ACCEPTANCE.md)。所有提交仅保存在本地，推送及 PR 等待用户核验同意。
