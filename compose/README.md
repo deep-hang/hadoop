@@ -9,3 +9,56 @@
 公共层已提供 [无 SSH 启动脚本与复验](../docs/cluster-startup.md)；正式三节点编排、持久卷和服务配置仍由 2—4 号实现。集群端口映射应绑定 `127.0.0.1`；数据目录的属主需兼容基础镜像的 `hadoop` 用户（UID 1000）。
 
 本模块测试放 [对应 tests/ 子目录](../tests/distributed/)；实验步骤、结果和交付链接放 [对应 docs/modules/ 子目录](../docs/modules/distributed/)。
+## 二号任务：三节点骨架
+
+当前 distributed.yaml 使用 sleep infinity 保持三个容器运行。
+已验证容器、节点名称解析和数据卷；尚未启动 HDFS/YARN。
+
+以下命令在电脑终端的项目根目录执行。
+
+启动：
+
+```text
+docker compose --env-file .development -p hadoop-distributed -f compose/distributed.yaml up -d
+```
+
+查看状态：
+
+```text
+docker compose --env-file .development -p hadoop-distributed -f compose/distributed.yaml ps
+```
+
+进入 master（输入 exit 返回电脑终端）：
+
+```text
+docker compose --env-file .development -p hadoop-distributed -f compose/distributed.yaml exec master bash
+```
+
+查看日志（骨架阶段没有 Hadoop 服务日志）：
+
+```text
+docker compose --env-file .development -p hadoop-distributed -f compose/distributed.yaml logs --tail 100
+```
+
+重启：
+
+```text
+docker compose --env-file .development -p hadoop-distributed -f compose/distributed.yaml restart
+```
+
+停止并保留数据卷：
+
+```text
+docker compose --env-file .development -p hadoop-distributed -f compose/distributed.yaml down
+```
+
+普通停止不加 --volumes。
+
+Windows 骨架检查：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\distributed\check-skeleton.ps1
+```
+
+预期输出 SKELETON_CHECK_PASS，退出码为 0。
+容器重建后的数据保留结果见 docs/modules/distributed/skeleton-results.md。
