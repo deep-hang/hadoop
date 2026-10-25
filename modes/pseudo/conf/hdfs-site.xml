@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <property><name>dfs.replication</name><value>1</value></property>
+  <property><name>dfs.namenode.name.dir</name><value>/var/lib/hadoop/hdfs/namenode</value></property>
+  <property><name>dfs.datanode.data.dir</name><value>/var/lib/hadoop/hdfs/datanode</value></property>
+  <property><name>dfs.namenode.safemode.extension</name><value>0</value></property>
+</configuration>

@@ -1,0 +1,23 @@
+services:
+  standalone:
+    image: ${BASE_IMAGE_NAME:?Use --env-file .development}:${BASE_IMAGE_TAG:?Use --env-file .development}
+    pull_policy: never
+    platform: linux/amd64
+    init: true
+    cpus: 1
+    mem_limit: 1g
+    working_dir: /workspace
+    environment:
+      HADOOP_HEAPSIZE_MAX: '512'
+    volumes:
+      - ../..:/workspace:ro
+      - ../../runtime/member5/standalone:/workspace/runtime/member5/standalone
+      - ./conf/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./conf/mapred-site.xml:/opt/hadoop/etc/hadoop/mapred-site.xml:ro
+      - type: bind
+        source: ${M5_INPUT_PATH:-./input}
+        target: /member5-input
+        read_only: true
+        bind:
+          create_host_path: false
+    command: [bash]
