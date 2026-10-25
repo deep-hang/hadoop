@@ -1,0 +1,5 @@
+Apple	1	c.txt
+apple	3	a.txt,b.txt,c.txt
+banana	3	a.txt,b.txt,c.txt
+cherry	1	a.txt
+date	2	b.txt,c.txt
