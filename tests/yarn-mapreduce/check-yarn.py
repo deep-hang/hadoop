@@ -13,6 +13,16 @@ pre-integration lab instead:
     COMPOSE_PROJECT=hadoop-yarn-lab \
     python3 tests/yarn-mapreduce/check-yarn.py
 
+Paths are HDFS paths. Spaces and shell-special characters are supported when
+the path is quoted on the command line, for example:
+
+    python3 tests/yarn-mapreduce/check-yarn.py \
+      --input '/project/input/yarn check $demo' \
+      --output '/project/output/yarn check/run 001'
+
+HDFS glob characters (* ? [ ] { }) are rejected because FsShell would treat
+them as patterns instead of literal directory names.
+
 The script only reads and submits work: it does not start, stop or format the
 cluster. Every failed assertion returns a non-zero exit code.
 """
@@ -22,6 +32,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -34,7 +45,29 @@ DEFAULT_PROJECT = "hadoop-distributed"
 EXAMPLES = "/opt/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar"
 DEFAULT_INPUT = "/project/input/yarn-check"
 EXPECTED = {"hadoop": 8000, "hello": 8000}
-AM_CONTAINER_SUFFIX = "_01_000001"
+# ApplicationMaster is container 1 in every application attempt.  Matching just
+# _01_000001 would wrongly count an AM retry (_02_000001) as a task container.
+AM_CONTAINER_SUFFIX = "_000001"
+# Task containers print this line only after the task (and its commit) finished.
+TASK_SUCCESS = re.compile(r"Task '(attempt_\d+_\d+_[mr]_\d+_\d+)' done\.")
+HDFS_GLOB_CHARS = set("*?[]{}")
+
+
+def checked_hdfs_path(value: str, option: str) -> str:
+    """Validate an HDFS path while allowing spaces and shell-special chars."""
+    if not value:
+        raise SystemExit(f"{option} must not be empty")
+    if not value.startswith("/"):
+        raise SystemExit(f"{option} must be an absolute HDFS path: {value!r}")
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise SystemExit(f"{option} must not contain control characters: {value!r}")
+    globbed = "".join(sorted({char for char in value if char in HDFS_GLOB_CHARS}))
+    if globbed:
+        raise SystemExit(
+            f"{option} contains HDFS glob characters {globbed!r}: {value!r}; "
+            "use a literal path without * ? [ ] { }")
+    return value
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--compose-file",
@@ -44,9 +77,9 @@ parser.add_argument("--project",
                     default=os.environ.get("COMPOSE_PROJECT", DEFAULT_PROJECT),
                     help="compose project name")
 parser.add_argument("--input", default=DEFAULT_INPUT,
-                    help="HDFS input directory (fixed input, reused)")
+                    help="absolute HDFS input directory (spaces allowed when quoted)")
 parser.add_argument("--output", default=None,
-                    help="HDFS output directory (must not exist)")
+                    help="absolute HDFS output directory (must not exist)")
 parser.add_argument("--wait", type=int, default=420,
                     help="seconds to wait for two DataNodes and two NodeManagers")
 parser.add_argument("--job-timeout", type=int, default=1200,
@@ -54,7 +87,9 @@ parser.add_argument("--job-timeout", type=int, default=1200,
 args = parser.parse_args()
 
 STAMP = datetime.now().strftime("%Y%m%d-%H%M%S")
-OUTPUT = args.output or f"/project/output/yarn-check/run-{STAMP}"
+args.input = checked_hdfs_path(args.input, "--input")
+OUTPUT = checked_hdfs_path(
+    args.output or f"/project/output/yarn-check/run-{STAMP}", "--output")
 REPORT = ROOT / "runtime" / f"yarn-check-{STAMP}"
 REPORT.mkdir(parents=True)
 COMPOSE = ["docker", "compose", "--env-file", str(ROOT / ".development"),
@@ -74,6 +109,7 @@ def run(command: list[str], *, timeout: int = 120, check: bool = True,
     global sequence
     sequence += 1
     started = time.monotonic()
+    display = shlex.join(command)
     try:
         completed = subprocess.run(command, cwd=ROOT, input=stdin_text,
                                    capture_output=True, text=True,
@@ -82,17 +118,17 @@ def run(command: list[str], *, timeout: int = 120, check: bool = True,
     except subprocess.TimeoutExpired as error:
         text = (error.stdout or "") + (error.stderr or "")
         (REPORT / f"{sequence:03d}.log").write_text(
-            " ".join(command) + f"\nTIMEOUT after {timeout}s\n" + text,
+            display + f"\nTIMEOUT after {timeout}s\n" + text,
             encoding="utf-8")
-        raise RuntimeError(f"Command timed out after {timeout}s: {' '.join(command)}")
+        raise RuntimeError(f"Command timed out after {timeout}s: {display}")
     elapsed = round(time.monotonic() - started, 1)
     (REPORT / f"{sequence:03d}.log").write_text(
-        " ".join(command) + f"\n(exit {completed.returncode}, {elapsed}s)\n"
+        display + f"\n(exit {completed.returncode}, {elapsed}s)\n"
         + completed.stdout + completed.stderr, encoding="utf-8")
     if check and completed.returncode:
         detail = (completed.stderr + completed.stdout).strip()[-4000:]
         raise RuntimeError(
-            f"Command exited {completed.returncode}: {' '.join(command)}\n{detail}")
+            f"Command exited {completed.returncode}: {display}\n{detail}")
     return completed
 
 
@@ -141,58 +177,147 @@ def wait_ready() -> dict[str, object]:
 
 
 def prepare_input() -> None:
-    script = """
+    script = r"""
 set -eu
+input=$1
 mkdir -p /tmp/yarn-check-input
 for n in 01 02 03 04 05 06 07 08; do
   awk 'BEGIN { for (i = 0; i < 1000; i++) print "hello hadoop" }' \
     > "/tmp/yarn-check-input/part-$n.txt"
 done
-if hdfs dfs -test -d @INPUT@; then
-  count=$(hdfs dfs -ls @INPUT@/part-*.txt | grep -c 'part-' || true)
-  if [ "$count" -ne 8 ]; then
-    echo "Existing input @INPUT@ has $count part files, expected 8." >&2
+if hdfs dfs -test -d "$input"; then
+  files=$(hdfs dfs -count "$input" | awk '{print $2}')
+  if [ "$files" -eq 0 ]; then
+    hdfs dfs -put -f /tmp/yarn-check-input/part-*.txt "$input"
+  elif [ "$files" -ne 8 ]; then
+    echo "Existing input $input has $files files, expected 8; refusing to mix old and new data." >&2
+    exit 1
+  elif ! hdfs dfs -test -e "$input/part-01.txt" || ! hdfs dfs -test -e "$input/part-08.txt"; then
+    echo "Existing input $input does not contain the expected part-01..08 files." >&2
     exit 1
   fi
 else
-  hdfs dfs -mkdir -p @INPUT@
-  hdfs dfs -put /tmp/yarn-check-input/part-*.txt @INPUT@
+  hdfs dfs -mkdir -p "$input"
+  hdfs dfs -put -f /tmp/yarn-check-input/part-*.txt "$input"
 fi
-test "$(hdfs dfs -cat @INPUT@/part-01.txt | wc -l)" -eq 1000
-hdfs dfs -ls @INPUT@
-""".replace("@INPUT@", args.input)
-    master("bash", "-ec", script, timeout=180)
+test "$(hdfs dfs -cat "$input/part-01.txt" | wc -l)" -eq 1000
+echo "input=$input files=8 lines_per_file=1000"
+"""
+    # Pass the path as $1 instead of interpolating it into the script.  This is
+    # what makes spaces, quotes, $, & and non-ASCII characters safe.
+    master("bash", "-ec", script, "bash", args.input, timeout=180)
 
 
 def read_counts() -> dict[str, int]:
-    result = master("hdfs", "dfs", "-cat", f"{OUTPUT}/part-r-*", timeout=60)
+    if master("hdfs", "dfs", "-test", "-e", f"{OUTPUT}/_SUCCESS",
+              check=False, timeout=30).returncode != 0:
+        raise RuntimeError(f"Missing _SUCCESS under {OUTPUT}")
     counts: dict[str, int] = {}
-    for line in result.stdout.splitlines():
-        if not line.strip():
-            continue
-        word, count = line.split("\t")
-        counts[word] = counts.get(word, 0) + int(count)
+    # Two reducers produce exactly these files; explicit names avoid HDFS glob
+    # expansion and keep spaces or $ in OUTPUT literal.
+    for name in ("part-r-00000", "part-r-00001"):
+        result = master("hdfs", "dfs", "-cat", f"{OUTPUT}/{name}", timeout=60)
+        for line in result.stdout.splitlines():
+            if not line.strip():
+                continue
+            word, count = line.split("\t")
+            counts[word] = counts.get(word, 0) + int(count)
     if counts != EXPECTED:
         raise RuntimeError(f"Unexpected word counts: {counts}; expected {EXPECTED}")
     return counts
 
 
-def container_evidence(app_id: str) -> dict[str, list[str]]:
-    evidence: dict[str, list[str]] = {}
+def parse_worker_evidence(worker: str, text: str) -> dict[str, object]:
+    """Parse one worker's container log summary.
+
+    A container counts only when it is a YarnChild task container and its
+    syslog shows a completed task.  Failed, killed, speculative and retried
+    attempts have no such marker and are reported as skipped, so a retry can
+    never make an idle worker look busy.
+    """
+    containers: list[str] = []
+    successful: list[dict[str, str]] = []
+    skipped: list[dict[str, str]] = []
+    for line in text.splitlines():
+        parts = line.split("|")
+        if len(parts) != 3:
+            continue
+        container, kind, marker = parts
+        if not container.startswith("container_"):
+            continue
+        containers.append(container)
+        if kind == "MRAppMaster" or container.endswith(AM_CONTAINER_SUFFIX):
+            skipped.append({"container": container, "reason": "ApplicationMaster"})
+            continue
+        if kind != "YarnChild" and not (kind == "" and TASK_SUCCESS.search(marker)):
+            skipped.append({
+                "container": container,
+                "reason": f"container type is not YarnChild ({kind or 'unknown'})",
+            })
+            continue
+        match = TASK_SUCCESS.search(marker)
+        if not match:
+            skipped.append({
+                "container": container,
+                "reason": "no successful task completion marker "
+                          "(failed, killed or retried attempt)",
+            })
+            continue
+        attempt = match.group(1)
+        task_type = "map" if "_m_" in attempt else "reduce"
+        successful.append({"container": container, "attempt": attempt,
+                           "type": task_type})
+    maps = [item["attempt"] for item in successful if item["type"] == "map"]
+    reduces = [item["attempt"] for item in successful if item["type"] == "reduce"]
+    return {
+        "worker": worker,
+        "containers": containers,
+        "successful": successful,
+        "maps": maps,
+        "reduces": reduces,
+        "skipped": skipped,
+    }
+
+
+def worker_task_evidence(app_id: str) -> dict[str, dict[str, object]]:
+    script = r"""
+set -eu
+app=$1
+base="/opt/hadoop/logs/userlogs/$app"
+if [ ! -d "$base" ]; then
+  echo "NO_LOGS"
+  exit 0
+fi
+for d in "$base"/*; do
+  [ -d "$d" ] || continue
+  c=$(basename "$d")
+  kind=$(grep -aoE 'YarnChild|MRAppMaster' "$d/launch_container.sh" 2>/dev/null | head -1 || true)
+  if [ -z "$kind" ]; then
+    kind=$(grep -aoE 'YarnChild|MRAppMaster' "$d/syslog" 2>/dev/null | head -1 || true)
+  fi
+  marker=$(grep -aoE "Task 'attempt_[0-9]+_[0-9]+_[mr]_[0-9]+_[0-9]+' done\." "$d/syslog" 2>/dev/null | tail -1 || true)
+  printf '%s|%s|%s\n' "$c" "$kind" "$marker"
+done
+"""
+    evidence: dict[str, dict[str, object]] = {}
     for worker in ("worker1", "worker2"):
-        found = compose(
-            "exec", "-T", worker, "bash", "-c",
-            f"find /opt/hadoop/logs/userlogs/{app_id} -mindepth 1 -maxdepth 1 "
-            "-type d -printf '%f\\n' 2>/dev/null | sort",
-            check=False, timeout=60)
-        containers = [line.strip() for line in found.stdout.splitlines()
-                      if line.strip().startswith("container_")]
-        tasks = [c for c in containers if not c.endswith(AM_CONTAINER_SUFFIX)]
-        evidence[worker] = tasks
-        if not tasks:
+        found = compose("exec", "-T", worker, "bash", "-ec", script, "bash",
+                        app_id, check=False, timeout=120)
+        if found.returncode != 0:
+            detail = (found.stderr + found.stdout).strip()[-2000:]
+            raise RuntimeError(f"Could not read {worker} userlogs: {detail}")
+        if "NO_LOGS" in found.stdout:
             raise RuntimeError(
-                f"{worker} has no non-AM container logs for {app_id}; "
-                f"all containers: {containers}")
+                f"{worker} has no userlogs for {app_id}. The NodeManager may "
+                "have restarted and cleaned them; rerun the check immediately "
+                "after a new job.")
+        parsed = parse_worker_evidence(worker, found.stdout)
+        if not parsed["successful"]:
+            raise RuntimeError(
+                f"{worker} has no successful YarnChild task for {app_id}. "
+                f"Containers: {parsed['containers'] or 'none'}; "
+                f"skipped: {parsed['skipped'] or 'none'}")
+        evidence[worker] = parsed
     return evidence
 
 
@@ -237,11 +362,22 @@ try:
     results["word_counts"] = counts
     print(f"PASS: output matches expected {json.dumps(counts)}", flush=True)
 
-    evidence = container_evidence(app_id)
-    results["worker_task_containers"] = evidence
-    for worker, containers in evidence.items():
-        print(f"PASS: {worker} ran {len(containers)} task container(s): "
-              + ", ".join(containers), flush=True)
+    evidence = worker_task_evidence(app_id)
+    results["worker_task_evidence"] = evidence
+    results["worker_task_containers"] = {
+        worker: [item["container"] for item in data["successful"]]
+        for worker, data in evidence.items()
+    }
+    for worker, data in evidence.items():
+        print(f"PASS: {worker} completed {len(data['maps'])} Map and "
+              f"{len(data['reduces'])} Reduce attempt(s): "
+              + ", ".join(item["container"] for item in data["successful"]),
+              flush=True)
+        ignored = [item for item in data["skipped"]
+                   if item["reason"] != "ApplicationMaster"]
+        for item in ignored:
+            print(f"INFO: {worker} ignored {item['container']}: {item['reason']}",
+                  flush=True)
 
     master("hdfs", "dfsadmin", "-report", check=False, timeout=60)
     success = True
@@ -257,5 +393,5 @@ finally:
 
 if not success:
     sys.exit(1)
-print("PASS: YARN registration, real MapReduce job and both workers' task evidence",
+print("PASS: YARN registration, real MapReduce job and both workers' successful task evidence",
       flush=True)

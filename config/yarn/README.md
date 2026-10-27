@@ -125,18 +125,25 @@ hdfs dfs -cat '/project/output/yarn-check/run-001/part-r-*'
 
 ### 6.3 两个 worker 的计算证据
 
-作业结束后，在电脑终端执行（compose 命令按 2 号的说明替换）：
+优先用自动检查（见 6.1），它按容器类型和成功标志判断，不数目录。手工核对时，作业结束后在电脑终端执行（compose 命令按 2 号的说明替换）：
 
 ```bash
 docker compose --env-file .development -p hadoop-distributed \
-  -f compose/distributed.yaml exec worker1 \
-  find /opt/hadoop/logs/userlogs/<application_id> -mindepth 1 -maxdepth 1 -type d
+  -f compose/distributed.yaml exec worker1 bash -c \
+  "grep -a \"Task 'attempt_\" /opt/hadoop/logs/userlogs/<application_id>/container_*/syslog || true"
 docker compose --env-file .development -p hadoop-distributed \
-  -f compose/distributed.yaml exec worker2 \
-  find /opt/hadoop/logs/userlogs/<application_id> -mindepth 1 -maxdepth 1 -type d
+  -f compose/distributed.yaml exec worker2 bash -c \
+  "grep -a \"Task 'attempt_\" /opt/hadoop/logs/userlogs/<application_id>/container_*/syslog || true"
 ```
 
-两边都应有 `container_*` 目录；`_01_000001` 是 ApplicationMaster，**不能只拿它当两个 worker 都算过的证据**。其余 `_01_000002` 起为 Map/Reduce 容器。
+判断规则：
+
+- `launch_container.sh` 含 `YarnChild` 的是任务容器，含 `MRAppMaster` 的是 ApplicationMaster；
+- `syslog` 中 `Task 'attempt_...' done.` 表示该任务成功完成（含提交），可以作为该 worker 的计算证据；
+- 每个 application attempt 的 `_000001` 都是 AM，重试 attempt 的 `_02_000001` 也要排除；
+- 失败、被杀、推测执行取消的尝试没有该标志，不能算“完成过任务”。只 `find` 容器目录会把重试尝试也算进去，数量会虚高。
+
+`check-yarn.py` 会自动完成这些判断，并把未成功容器写入 `result.json` 的 `skipped`。
 
 ## 7. 常见问题
 
@@ -152,7 +159,8 @@ docker compose --env-file .development -p hadoop-distributed \
 
 ## 8. 当前限制与实测状态
 
-- 2026-10-27 本机预验证通过：`application_1793080038565_0001` 成功，输出 `hadoop=8000`、`hello=8000`，worker1/worker2 分别有 6/4 个任务容器。使用 `runtime/yarn-lab/` 的临时编排和公共 HDFS fixture，因为 2 号 `compose/distributed.yaml`、3 号 `config/hdfs/` 尚未合入。正式集群就绪后必须重跑 `check-yarn.py`，用正式 application ID 替换预验证记录。
+- 2026-10-27 本机预验证通过：常规路径 `application_1793087201211_0001`（worker1 4 个成功 Map，worker2 4 Map + 2 Reduce）；含空格和特殊字符的路径 `application_1793087201211_0002`（worker1 4 个成功 Map + 2 个失败/重试容器被忽略，worker2 4 Map + 2 Reduce），两次输出均为 `hadoop=8000`、`hello=8000`。使用 `runtime/yarn-lab/` 的临时编排和公共 HDFS fixture，因为 2 号 `compose/distributed.yaml`、3 号 `config/hdfs/` 尚未合入。正式集群就绪后必须重跑 `check-yarn.py`，用正式 application ID 替换预验证记录。
+- 失败、被杀和重试未成功的容器没有 `Task 'attempt_...' done.`，不计入双 worker 证据；只数容器目录会误判。NodeManager 重启会清理 `userlogs`，必须在作业结束后立即读取。
 - Apple Silicon 必须在 Docker Desktop 启用 Rosetta（`useVirtualizationFrameworkRosetta=true`）。未启用时 ResourceManager 在 QEMU 模拟下超过 10 分钟仍未启动；启用后约 2 分钟内完成注册。该设置属于本机 Docker，不是仓库配置。
 - 未启用 JobHistory Server 和日志聚合；不要依赖 `yarn logs`，按上面的 userlogs 路径取证。
 - 资源参数按 8 GB Docker 虚拟机设定。换机器时同时调整 NodeManager 内存、调度器上限和任务内存，不能只改一项。

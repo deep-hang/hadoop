@@ -50,7 +50,7 @@ yarn application -list -appStates ALL
 
 ## 5. 怎样算完成
 
-两节点注册、真实 YARN 作业成功、正确输出、两个 worker 的计算证据均齐全；记录 Docker 资源、YARN 资源及任务内存的关系。
+两节点注册、真实 YARN 作业成功、正确输出、两个 worker 都有**成功完成**的 Map/Reduce 任务尝试；记录 Docker 资源、YARN 资源及任务内存的关系。失败、被杀或重试未成功的容器不计入。
 
 自动检查（推荐，在电脑终端、项目根目录执行）：
 
@@ -58,7 +58,7 @@ yarn application -list -appStates ALL
 python3 tests/yarn-mapreduce/check-yarn.py
 ```
 
-脚本自动完成节点注册、固定输入、真实作业、输出核对和双 worker 容器检查，失败返回非零；手工命令见第 4 节，本机实测见第 6 节。
+脚本自动完成节点注册、固定输入、真实作业、输出核对和双 worker 成功任务检查；它按容器类型和 `Task 'attempt_...' done.` 判断，不数目录，失败/重试尝试会被忽略。`--input`/`--output` 支持空格和 shell 特殊字符（调用时加引号），但拒绝 HDFS glob 字符 `* ? [ ] { }`。手工命令见第 4 节，本机实测见第 6 节。
 
 PPT/视频讲清 ResourceManager、NodeManager、ApplicationMaster、Map/Shuffle/Reduce，按“配置 → 注册 → 提交 → 状态 → 节点任务 → 结果”演示。补好本目录实测记录，按 [协作规则](../../contributing.md) 提 PR 到 main。
 
@@ -87,7 +87,7 @@ COMPOSE_PROJECT=hadoop-yarn-lab \
 python3 tests/yarn-mapreduce/check-yarn.py
 ```
 
-退出码 0。证据在 `runtime/yarn-check-20261027-134917/`（`runtime/` 已被 `.gitignore` 忽略）。
+退出码 0。证据在 `runtime/yarn-check-20261027-154803/` 和 `runtime/yarn-check-20261027-155904/`（`runtime/` 已被 `.gitignore` 忽略）。
 
 ### 6.3 结果
 
@@ -95,30 +95,43 @@ python3 tests/yarn-mapreduce/check-yarn.py
 | --- | --- |
 | NodeManager | worker1、worker2 均 `RUNNING`，各 `memory:2048, vCores:2` |
 | DataNode | 2 个 Live；`Under replicated blocks: 0` |
-| Application | `application_1793080038565_0001`，`FINISHED` / `SUCCEEDED`，AM 在 worker1 |
-| 作业时间 | 05:49:50 提交，05:50:25 Map 100%，05:50:27 Reduce 100%，约 37 秒 |
+| Application | `application_1793087201211_0001`，`FINISHED` / `SUCCEEDED`，AM 在 worker2 |
+| 作业时间 | 约 5 分 50 秒（本轮集群 RPC 较慢；同一配置更早一轮约 37 秒） |
 | 输出 | `part-r-00000` 为 `hadoop 8000`，`part-r-00001` 为 `hello 8000` |
-| 双 worker 容器 | 共 10 个任务容器；worker1 6 个（`..._01_000006` 到 `..._01_000011`），worker2 4 个（`..._01_000002` 到 `..._01_000005`） |
-| 资源 | Aggregate 105968 MB-seconds、202 vcore-seconds；容器常驻约 765/794 MiB，master 约 927 MiB |
+| 双 worker 成功任务 | worker1 4 个 Map；worker2 4 个 Map + 2 个 Reduce |
+| 资源 | Aggregate 1177335 MB-seconds、2294 vcore-seconds |
 
-AM 容器 `_01_000001` 已从证据中排除，只统计 Map/Reduce 容器。
+每个 application attempt 的 `_000001` 都是 ApplicationMaster；脚本按 `MRAppMaster` 类型和 `_000001` 后缀排除，只统计 `YarnChild` 且带成功标志的任务。
 
 ### 6.4 失败用例
 
 ```bash
 python3 tests/yarn-mapreduce/check-yarn.py \
-  --output /project/output/yarn-check/run-20261027-134917
+  --output /project/output/yarn-check/run-20261027-154803
 ```
 
 第二次执行返回非零，提示 `Output already exists, refusing to delete it`，没有删除已有结果。
 
 ### 6.5 关键结论
 
-- 未启用 Rosetta 时，ResourceManager 在 QEMU 模拟下超过 10 分钟仍未完成启动；启用 Rosetta 后，同一镜像和配置在约 2 分钟内完成注册并跑完作业。Apple Silicon 必须开启该加速。
-- 两个 worker 都产生了非 AM 容器，节点在线截图不能替代这项证据。
+- 未启用 Rosetta 时，ResourceManager 在 QEMU 模拟下超过 10 分钟仍未完成启动；启用 Rosetta 后，同一镜像和配置能完成注册并跑完作业。Apple Silicon 必须开启该加速。
+- 两个 worker 都有 `YarnChild` 且带 `Task 'attempt_...' done.` 的成功任务；节点在线截图或容器目录存在不能替代这项证据。
+- 失败、被杀或重试未成功的容器没有该标志，只能算“尝试过”，不能算“完成过任务”。
 - 512 MB 容器、384 MB 堆能装进 2048 MB NodeManager，调度和 Shuffle 正常。
 
-### 6.6 待补
+### 6.6 重试与自定义路径复测
+
+`application_1793087201211_0002` 使用含空格和 shell 特殊字符的输入、输出路径：
+
+```bash
+python3 tests/yarn-mapreduce/check-yarn.py \
+  --input '/project/input/yarn check $demo & (测试)' \
+  --output '/project/output/yarn check/run 001'
+```
+
+结果：作业成功，输出仍为 `hadoop=8000`、`hello=8000`。worker1 有 4 个成功 Map；另有 2 个容器（`..._01_000002`、`..._01_000013`）没有成功标志（失败、被杀或重试未成功），被记入 `skipped`，不再算作 worker1 的成功任务。worker2 有 4 个成功 Map 和 2 个成功 Reduce。该复测同时验证了空格、`$`、`&`、括号和中文路径。
+
+### 6.7 待补
 
 - 2、3 号合入后在正式集群重跑，记录正式 application ID、启动等待时间和截图；
 - 8088 与 9870 页面截图；
