@@ -62,3 +62,55 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\distributed\check-sk
 
 预期输出 SKELETON_CHECK_PASS，退出码为 0。
 容器重建后的数据保留结果见 docs/modules/distributed/skeleton-results.md。
+## 正式三节点编排与联合验证
+
+distributed.yaml 已改为通过公共 hadoop-node.sh 启动真实 Hadoop 服务。
+前面的 sleep infinity 骨架说明为历史阶段，不再描述当前配置。
+
+运行前必须具备以下配套文件：
+
+- config/hdfs/core-site.xml
+- config/hdfs/hdfs-site.xml
+- config/yarn/yarn-site.xml
+- config/yarn/mapred-site.xml
+
+以下命令在电脑终端的项目根目录执行。
+本次联调使用 hadoop-distributed-recovery 项目名：
+
+```text
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml config --quiet
+```
+
+仅首次初始化新环境：
+
+```text
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml run --rm --no-deps master bash /workspace/scripts/hadoop-node.sh init-namenode
+```
+
+启动、检查和进入 master：
+
+```text
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml up -d
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml ps -a
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml exec master bash
+```
+
+查看日志、重启、停止：
+
+```text
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml logs --tail 100
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml restart
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml down
+```
+
+普通启动和重启不重新初始化，普通停止不加 --volumes。
+容器 Up 不代表服务就绪，需确认两个 DataNode、两个 RUNNING
+NodeManager，以及 HDFS 安全模式为 OFF。
+
+Web 页面：http://localhost:9870 和 http://localhost:8088。
+
+Compose 项目名决定网络和数据卷的隔离。后续命令必须使用同一项目名。
+旧 hadoop-distributed 项目的故障数据卷仍保留，不要误用或删除。
+不同项目使用相同宿主机端口时不能同时启动。
+
+本次实测结果见 docs/modules/distributed/integration-results.md。

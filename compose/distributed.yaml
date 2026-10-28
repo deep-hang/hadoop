@@ -1,4 +1,3 @@
-# Skeleton only: Hadoop services are not started yet.
 x-node: &node
   image: hadoop-base:v0.1
   platform: linux/amd64
@@ -6,8 +5,16 @@ x-node: &node
   stop_grace_period: 30s
   env_file:
     - ../.development
+  environment:
+    HADOOP_COMMON_HOME: /opt/hadoop
+    HADOOP_HDFS_HOME: /opt/hadoop
+    HADOOP_YARN_HOME: /opt/hadoop
+    HADOOP_MAPRED_HOME: /opt/hadoop
+    HDFS_NAMENODE_OPTS: -Xmx256m
+    HDFS_DATANODE_OPTS: -Xmx128m
+    YARN_RESOURCEMANAGER_OPTS: -Xmx256m
+    YARN_NODEMANAGER_OPTS: -Xmx256m
   working_dir: /workspace
-  command: ["sleep", "infinity"]
   networks:
     - hadoop
 
@@ -15,22 +22,40 @@ services:
   master:
     <<: *node
     hostname: master
+    command: ["bash", "/workspace/scripts/hadoop-node.sh", "master"]
+    ports:
+      - "127.0.0.1:9870:9870"
+      - "127.0.0.1:8088:8088"
     volumes:
       - ..:/workspace
+      - ../config/hdfs/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ../config/hdfs/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ../config/yarn/yarn-site.xml:/opt/hadoop/etc/hadoop/yarn-site.xml:ro
+      - ../config/yarn/mapred-site.xml:/opt/hadoop/etc/hadoop/mapred-site.xml:ro
       - master-data:/var/lib/hadoop
 
   worker1:
     <<: *node
     hostname: worker1
+    command: ["bash", "/workspace/scripts/hadoop-node.sh", "worker"]
     volumes:
       - ..:/workspace
+      - ../config/hdfs/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ../config/hdfs/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ../config/yarn/yarn-site.xml:/opt/hadoop/etc/hadoop/yarn-site.xml:ro
+      - ../config/yarn/mapred-site.xml:/opt/hadoop/etc/hadoop/mapred-site.xml:ro
       - worker1-data:/var/lib/hadoop
 
   worker2:
     <<: *node
     hostname: worker2
+    command: ["bash", "/workspace/scripts/hadoop-node.sh", "worker"]
     volumes:
       - ..:/workspace
+      - ../config/hdfs/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ../config/hdfs/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ../config/yarn/yarn-site.xml:/opt/hadoop/etc/hadoop/yarn-site.xml:ro
+      - ../config/yarn/mapred-site.xml:/opt/hadoop/etc/hadoop/mapred-site.xml:ro
       - worker2-data:/var/lib/hadoop
 
 networks:
