@@ -1,0 +1,11 @@
+alpha	8	log-01.txt,log-02.txt,log-03.txt,log-04.txt,log-05.txt,log-06.txt,log-07.txt,log-08.txt
+beta	8	log-01.txt,log-02.txt,log-03.txt,log-04.txt,log-05.txt,log-06.txt,log-07.txt,log-08.txt
+gamma	8	log-01.txt,log-02.txt,log-03.txt,log-04.txt,log-05.txt,log-06.txt,log-07.txt,log-08.txt
+part01	2	log-01.txt
+part02	2	log-02.txt
+part03	2	log-03.txt
+part04	2	log-04.txt
+part05	2	log-05.txt
+part06	2	log-06.txt
+part07	2	log-07.txt
+part08	2	log-08.txt
