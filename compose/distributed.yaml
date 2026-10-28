@@ -24,8 +24,8 @@ services:
     hostname: master
     command: ["bash", "/workspace/scripts/hadoop-node.sh", "master"]
     ports:
-      - "127.0.0.1:9870:9870"
-      - "127.0.0.1:8088:8088"
+      - "127.0.0.1:${HDFS_WEB_HOST_PORT:-9870}:9870"
+      - "127.0.0.1:${YARN_WEB_HOST_PORT:-8088}:8088"
     volumes:
       - ..:/workspace
       - ../config/hdfs/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
