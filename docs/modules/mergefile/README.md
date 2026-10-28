@@ -53,6 +53,107 @@ verify.sh 默认核对已确认的小样例；多 Worker 演示使用独立数�
 
 合并规则和固定预期清楚；三个应用脚本按公共接口工作；多文件结果正确；真实 YARN 作业成功，并有两个 worker 的数据与计算证据。不要为了单文件输出而误称只有一个 worker 也算分布式参与证明。
 
+## 7. 本组确定的合并规则
+
+下面的规则是**本组的设计方案**，老师未指定这些细节。已写进
+[apps/mergefile/README.md](../../apps/mergefile/) 并提交组长确认；确认前不作为老师原话使用。
+
+| 组长需要说清的事 | 本方案 |
+| --- | --- |
+| 拼接还是去重 | **去重**，次数累加到第二列 |
+| 是否排序 | **排序**，按记录内容的 UTF-8 字节序升序 |
+| 是否保留来源 | **保留**，第三列是来源文件名列表（去重、字典序） |
+| 空行规则 | 空行、纯空白行丢弃；去掉首尾空白；**行内空白保留** |
+| 一个逻辑结果还是一个数据文件 | 两者都要：全局去重有序，落成单个 `merged.txt` |
+| 参考来源 | Hadoop 3.3.6 examples JAR **无** `MergeFile` 类（`check-example-jar.sh` 已核实），最接近的官方写法是 `MultiFileWordCount` |
+
+输出格式：`记录<TAB>次数<TAB>来源文件1,来源文件2,...`。排序靠"键 = 记录本身"加单个 Reducer 实现，
+不依赖目录枚举顺序，也不依赖 Mapper 完成顺序。
+
+固定小样例的输入在 `apps/mergefile/input/`，唯一预期在 `apps/mergefile/expected/merged-small.txt`：
+
+```text
+Apple	1	c.txt
+apple	3	a.txt,b.txt,c.txt
+banana	3	a.txt,b.txt,c.txt
+cherry	1	a.txt
+date	2	b.txt,c.txt
+```
+
+## 8. 实测记录
+
+两轮都在 **Windows 10 + Docker Desktop + `hadoop-base:v0.1`（Hadoop 3.3.6 / Temurin JDK 1.8.0_442）** 上跑通。
+
+| 测试套件 | 环境 | 结果 |
+| --- | --- | --- |
+| `tests/mergefile/run-tests.sh` | 本地模式（`file://` + local JobRunner） | 48 项断言全部通过，`RESULT: PASS` |
+| `tests/mergefile/run-tests.sh --hdfs` | 真实三节点集群（HDFS + YARN） | 48 项断言全部通过，`RESULT: PASS` |
+| `check-scripts.sh` | 13 个脚本换行符与 shebang | 通过 |
+| `check-fixtures.sh` | 演示数据集可重复生成 | 通过（重生成哈希与提交版本一致） |
+| `check-example-jar.sh` | 官方 examples JAR 检查 | 通过（确认无 `MergeFile` 类） |
+
+复现命令（开发容器内，本地模式）：
+
+```bash
+bash /workspace/tests/mergefile/run-tests.sh
+```
+
+复现命令（集群 master 容器内，HDFS 模式）：
+
+```bash
+bash /workspace/tests/mergefile/run-cluster-tests.sh
+```
+
+真实集群上的两个作业均为 `FINISHED / SUCCEEDED`：
+
+| 作业 | 输入 | Map | Reduce | 结果 |
+| --- | --- | --- | --- | --- |
+| `application_1792936414411_0009` | `apps/mergefile/input/` 3 个文件 | 3 个（`Data-local map tasks=3`） | 1 个 | 12 行输入 → 10 条记录 → 5 条唯一记录，与固定预期逐字节一致 |
+| `application_1792936414411_0010` | `tests/mergefile/input-multi/` 8 个文件 | 8 个（`Data-local map tasks=8`） | 1 个 | 56 行输入 → 40 条记录 → 11 条唯一记录，与 `expected/multi-expected.txt` 逐字节一致 |
+
+集群模式下 `run-tests.sh --hdfs` 的输出保留在 `/project/output/mergefile-test/run-<时间戳>/`，脚本不会删除已有数据。
+
+## 9. 两个 Worker 的数据与计算证据
+
+**数据分布**：`hdfs fsck /project/input/mergefile-multi -files -blocks -locations` 显示 8 个输入文件的块
+同时存放在 worker1（172.19.0.2）与 worker2（172.19.0.4）上，副本数 2，`Status: HEALTHY`，无缺块。
+
+**计算分布**：逐节点核对容器目录，任务类型从容器自己的 `syslog` 判断，不靠容器编号猜测。
+
+| 作业 | worker1 | worker2 |
+| --- | --- | --- |
+| 8 文件作业 `..._0010` | 4 个 Map 任务 + Reduce 任务 | 4 个 Map 任务 |
+| 3 文件作业 `..._0009` | 1 个 Map 任务 | 2 个 Map 任务 + Reduce 任务 |
+
+两个 worker 都有 Map 任务实跑，**不是**"两个节点在线就算参与"。收集命令：
+
+```bash
+bash tests/mergefile/run-cluster-demo.sh          # 起集群、跑作业、收证据、拆集群
+bash tests/mergefile/collect-evidence.sh <项目名>  # 单独收集证据
+```
+
+## 10. 与任务要求的逐条对照
+
+| 任务要求（第 3 节） | 本模块的完成情况 |
+| --- | --- |
+| 明确是否去重、是否排序、是否保留来源、合并是逻辑结果还是数据文件 | 第 7 节表格逐项写明，供组长确认 |
+| 至少两个输入文件，包含跨文件重复行、空行等边界 | 固定小样例 3 个文件共 12 行（跨文件重复、空行、首尾空白、大小写）；演示数据集 8 个文件 56 行 |
+| 排序必须定义在键与比较规则中，不能依赖目录枚举或 Mapper 顺序 | 键 = 记录本身，固定 1 个 Reducer，输出天然全局有序 |
+| 明确是否需要单个 Reducer 及其性能影响 | 第 7 节说明取舍与大数据量的两阶段替代方案 |
+| build.sh 用 javac、jar、hadoop classpath，产物放 build/ | 已实现，产物 `apps/mergefile/build/mergefile.jar` |
+| run.sh 接收 HDFS 路径，已有输出则失败 | 已实现，输出已存在返回 5 |
+| verify.sh 按确认规则核对全部输出及记录数/重复情况，失败返回非零 | 已实现，逐字节比对 + 记录数核对；被破坏的输出能被识别 |
+| 不能用 `hdfs dfs -getmerge` 替代本模块的 MapReduce 实现 | 全流程只用 MapReduce 作业，无 getmerge |
+| 在公共开发容器先编译并做局部测试 | 已完成，本地模式 48 项断言通过 |
+| 从 master 提交应用，先跑固定小样本再用多文件展示两个 worker | 已完成，两批输入均为真实 YARN 作业且 `SUCCEEDED` |
+| 与 3 号核对 fsck 块位置，与 4 号核对真实 application 和任务节点 | 第 9 节记录了块位置与容器所在节点 |
+
+## 11. 仍待完成
+
+1. **组长确认规则**：第 7 节明确标注为本组方案而非老师原话；规则若调整，需同步改代码、固定预期与测试。
+2. **截图与 PPT/视频链接**：按"合并目的 → 输入规则 → MapReduce 设计 → 上传 → 数据位置 → 作业 → 任务节点 → 输出验证"的顺序准备。
+3. **正式集群复核**：当前用的是公共验证配置 `tests/common/fixtures/cluster/`，2 号的正式编排交付后用同一组命令再跑一遍。
+
 PPT/视频讲清合并目的、输入规则、MapReduce 设计，再演示上传 → 数据位置 → 作业 → 任务节点 → 输出验证。本目录补实测记录和材料链接，按 [协作规则](../../contributing.md) 提 PR 到 main。
 
 <a id="submit"></a>
