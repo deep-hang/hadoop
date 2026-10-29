@@ -47,20 +47,21 @@ normalize_dir() {
 }
 
 # 输出当前 Live DataNode，每行「IP hostname」；只取 Live datanodes 段，排除 Dead / Decommissioning
+# 行首可能有空格（各 Hadoop 版本缩进不一致），所以正则不锚定行首
 hdfs_live_nodes() {
-    hdfs dfsadmin -report 2>/dev/null | awk '
-        /^Live datanodes \(/ { inlive = 1; next }
-        /^(Dead datanodes|Decommissioning datanodes|Entering maintenance)/ { inlive = 0 }
-        inlive && /^Name: / { ip = $2; sub(/:.*/, "", ip); next }
-        inlive && /^Hostname: / { print ip, $2 }
+    hdfs dfsadmin -report 2>/dev/null | tr -d '\r' | awk '
+        /^[[:space:]]*Live datanodes \(/ { inlive = 1; next }
+        /^[[:space:]]*(Dead datanodes|Decommissioning datanodes|Entering maintenance)/ { inlive = 0 }
+        inlive && /^[[:space:]]*Name: / { ip = $2; sub(/:.*/, "", ip); next }
+        inlive && /^[[:space:]]*Hostname: / { print ip, $2 }
     '
 }
 
 # 列出某个 HDFS 文件的所有块 ID，每行一个
 hdfs_block_ids() {
     local path="$1"
-    hdfs fsck "$path" -files -blocks 2>/dev/null |
-        awk '/^[0-9]+\. (BP-|blk_)/ { id = $2; sub(/\.$/, "", id); print id }'
+    hdfs fsck "$path" -files -blocks 2>/dev/null | tr -d '\r' |
+        awk '/^[[:space:]]*[0-9]+\. (BP-|blk_)/ { id = $2; sub(/\.$/, "", id); print id }'
 }
 
 # 统计行数，无输出时返回 0 而不是非零（grep -c 在零匹配时退出码为 1）

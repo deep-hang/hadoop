@@ -15,26 +15,42 @@ info "hdfs fsck $target -files -blocks -locations"
 fsck_out="$(hdfs fsck "$target" -files -blocks -locations 2>&1 || true)"
 printf '%s\n' "$fsck_out" | sed 's/^/    /'
 
-# 1. 总体健康状况
-printf '%s\n' "$fsck_out" | grep -q 'Status: HEALTHY' ||
+# 1. 总体健康状况（摘要行的行首可能有空格）
+printf '%s\n' "$fsck_out" | tr -d '\r' | grep -Eq '^[[:space:]]*Status:[[:space:]]*HEALTHY' ||
     die 'fsck 状态不是 HEALTHY（可能有损坏或缺失的块）'
 ok 'fsck 状态 HEALTHY'
 
-# 缺块 / 欠副本必须为 0；不同 Hadoop 版本措辞略有差异，两种写法都接受
+# 缺块 / 欠副本 / 损坏块必须为 0。
+# 真实 fsck 摘要行有三个坑，不能锚定行首也不能要求行尾是 0：
+#   1) 行首带一个空格：  " Under-replicated blocks:\t0 (0.0 %)"
+#   2) 冒号后是制表符；
+#   3) 部分计数后面还跟着百分比。
+# 所以改为「字段名 + 冒号 + 该行第一个整数」，与缩进、分隔符、后续内容无关。
+# 注意：这样能跳过 "Missing blocks (with replication factor 1):" 这类同前缀字段，
+# 因为字段名后面紧跟的是左括号而不是冒号。
+field_count=0
+skipped=()
 expect_zero() {
-    local label="$1" line
-    line="$(printf '%s\n' "$fsck_out" | grep -E "^${label}:" | head -n 1 || true)"
-    [[ -n "$line" ]] || {
-        info "fsck 输出未包含「$label」，跳过该项"
+    local label="$1" value
+    value="$(printf '%s\n' "$fsck_out" | tr -d '\r' |
+        sed -n -E "s/^[[:space:]]*${label}[[:space:]]*:[^0-9]*([0-9]+).*/\1/p" | head -n 1)"
+    if [[ -z "$value" ]]; then
+        skipped+=("$label")
         return 0
-    }
-    printf '%s' "$line" | grep -Eq ':[[:space:]]*0$' || die "「$line」应为 0"
-    ok "$line"
+    fi
+    field_count=$((field_count + 1))
+    [[ "$value" == '0' ]] || die "「${label}」= ${value}，期望 0"
+    ok "${label} = ${value}"
 }
 expect_zero 'Missing blocks'
 expect_zero 'Under-replicated blocks'
-expect_zero 'Under replicated blocks'
 expect_zero 'Corrupt blocks'
+
+if ((${#skipped[@]} > 0)); then
+    info "以下字段本次 fsck 输出里没有出现（该版本可能只在非 0 时打印）：${skipped[*]}"
+fi
+((field_count > 0)) ||
+    die 'fsck 摘要计数一条都没识别出来：输出格式与预期差异太大，请把上面的原始输出发给 3 号'
 
 # 2. 当前 Live DataNode 的 IP 清单
 live_nodes="$(hdfs_live_nodes)"
@@ -44,8 +60,8 @@ live_ip_count="$(printf '%s\n' "$live_nodes" | count_lines)"
 
 live_ips="$(printf '%s\n' "$live_nodes" | awk '{ print $1 }' | sort -u)"
 
-# 3. 逐个块核对副本位置
-block_lines="$(printf '%s\n' "$fsck_out" | grep -E '^[0-9]+\. (BP-|blk_)' || true)"
+# 3. 逐个块核对副本位置（块行同样允许行首空格）
+block_lines="$(printf '%s\n' "$fsck_out" | tr -d '\r' | grep -E '^[[:space:]]*[0-9]+\. (BP-|blk_)' || true)"
 [[ -n "$block_lines" ]] || die "fsck 输出中没有块信息：$target"
 
 block_index=0
