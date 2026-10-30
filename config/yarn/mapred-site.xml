@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  4 号维护：MapReduce on YARN 配置。
+  由 2 号逐文件挂载到 master / worker1 / worker2 的 /opt/hadoop/etc/hadoop/mapred-site.xml。
+  AM、Map、Reduce 各 512 MB，JVM 堆 384 MB，均小于 NodeManager 的 2048 MB。
+-->
+<configuration>
+  <property>
+    <name>mapreduce.framework.name</name>
+    <value>yarn</value>
+  </property>
+
+  <!-- 显式给出 AM 与任务容器的类路径，避免精简镜像里缺 common/hdfs/yarn 依赖。 -->
+  <property>
+    <name>mapreduce.application.classpath</name>
+    <value>/opt/hadoop/share/hadoop/common/*,/opt/hadoop/share/hadoop/common/lib/*,/opt/hadoop/share/hadoop/hdfs/*,/opt/hadoop/share/hadoop/hdfs/lib/*,/opt/hadoop/share/hadoop/yarn/*,/opt/hadoop/share/hadoop/yarn/lib/*,/opt/hadoop/share/hadoop/mapreduce/*,/opt/hadoop/share/hadoop/mapreduce/lib/*</value>
+  </property>
+
+  <property>
+    <name>yarn.app.mapreduce.am.resource.mb</name>
+    <value>512</value>
+  </property>
+  <property>
+    <name>yarn.app.mapreduce.am.command-opts</name>
+    <value>-Xmx384m</value>
+  </property>
+
+  <property>
+    <name>mapreduce.map.memory.mb</name>
+    <value>512</value>
+  </property>
+  <property>
+    <name>mapreduce.map.java.opts</name>
+    <value>-Xmx384m</value>
+  </property>
+
+  <property>
+    <name>mapreduce.reduce.memory.mb</name>
+    <value>512</value>
+  </property>
+  <property>
+    <name>mapreduce.reduce.java.opts</name>
+    <value>-Xmx384m</value>
+  </property>
+
+  <!-- 两个 DataNode 时提交文件副本数取 2，避免默认 10 引发等待和告警。 -->
+  <property>
+    <name>mapreduce.client.submit.file.replication</name>
+    <value>2</value>
+  </property>
+</configuration>
