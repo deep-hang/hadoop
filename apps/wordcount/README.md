@@ -71,7 +71,11 @@ bash /workspace/apps/wordcount/build.sh
 ```
 
 用镜像自带的 `javac`、`jar` 编译（基础镜像没有 Maven），编译类路径取自 `hadoop classpath`，
-产物为 `build/wordcount.jar`（带 `Main-Class`）。成功输出 `BUILD PASS`，失败非 0。
+产物为 `build/wordcount.jar`。成功输出 `BUILD PASS`，失败非 0。
+
+> 清单里**故意不写 `Main-Class`**：`hadoop jar <jar> <主类> <参数>` 只有在清单没有 `Main-Class`
+> 时才会把第一个参数当主类。写了 `Main-Class` 的话，`run.sh` 传来的主类名会被当成第一个业务参数，
+> 驱动拿到的参数个数就错了（这是实测踩到过的问题）。
 
 ### run.sh
 
@@ -88,10 +92,13 @@ bash /workspace/apps/wordcount/run.sh /project/input/wordcount /project/output/w
 
 ```bash
 WORDCOUNT_LOCAL=1 bash /workspace/apps/wordcount/run.sh \
-  /workspace/apps/wordcount/input /tmp/wordcount-local-out
+  /workspace/apps/wordcount/input /workspace/runtime/wc/fixed
 ```
 
 本地模式改用 `file://` 与 `LocalJobRunner`，不连 HDFS、不占 YARN 资源。
+
+注意本地模式的输出别放 `/tmp`：`docker compose run --rm` 每次都是新容器，`/tmp` 里的结果
+下一次就没了。放在 `/workspace/runtime/` 下（仓库挂载进容器、且被 `.gitignore` 忽略）才能保留。
 
 ### verify.sh
 
