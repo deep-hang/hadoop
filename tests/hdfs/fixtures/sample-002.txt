@@ -1,0 +1,3 @@
+hello hadoop
+name master worker1 worker2
+replication 2
