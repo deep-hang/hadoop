@@ -73,6 +73,16 @@ to_uri() {
     esac
 }
 
+# 本地模式专用：绝对路径 /a/b 要补成 file:///a/b（三个斜杠），
+# 不能用 to_uri，否则 "file://" 去掉尾部斜杠再拼接会得到 file://a/b，
+# 把 a 当成主机名，Hadoop 会报 URI 无法解析。
+local_to_uri() {
+    case "$1" in
+        *://*) printf '%s' "$1" ;;
+        *)     printf 'file://%s' "$1" ;;
+    esac
+}
+
 if [ "${LOCAL_MODE}" = "1" ]; then
     # ---------- 本地调试：file:// + LocalJobRunner ----------
     case "${INPUT}" in
@@ -84,8 +94,8 @@ if [ "${LOCAL_MODE}" = "1" ]; then
         *) echo "RUN FAIL: 本地模式要求输出为绝对路径，收到 ${OUTPUT}" >&2; exit 2 ;;
     esac
 
-    INPUT_URI="$(to_uri "${INPUT}" "file://")"
-    OUTPUT_URI="$(to_uri "${OUTPUT}" "file://")"
+    INPUT_URI="$(local_to_uri "${INPUT}")"
+    OUTPUT_URI="$(local_to_uri "${OUTPUT}")"
 
     [ -e "${INPUT}" ] || { echo "RUN FAIL: 本地输入不存在 ${INPUT}" >&2; exit 2; }
     if [ -e "${OUTPUT}" ]; then
