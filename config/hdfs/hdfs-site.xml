@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  3 号模块：HDFS 服务配置（hdfs-site.xml）
+  由 2 号按文件挂载到 master、worker1、worker2 的 /opt/hadoop/etc/hadoop/hdfs-site.xml。
+  name.dir / data.dir 必须与 .development 的 HDFS_NAMENODE_DIR、HDFS_DATANODE_DIR 完全一致：
+  scripts/hadoop-node.sh 用 hdfs getconf -confKey 读取这两项并与环境变量比对，不一致直接退出 1。
+-->
+<configuration>
+  <!-- NameNode 元数据目录（fsimage、edits）。落在持久卷 /var/lib/hadoop 内，重启不丢文件。 -->
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>/var/lib/hadoop/hdfs/namenode</value>
+  </property>
+
+  <!-- DataNode 数据块目录。落在持久卷内，容器重建后块文件仍在，无需重新上传。 -->
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>/var/lib/hadoop/hdfs/datanode</value>
+  </property>
+
+  <!-- 两个 Worker 的实验副本数：每个块存 2 份，分别落在 worker1、worker2。 -->
+  <property>
+    <name>dfs.replication</name>
+    <value>2</value>
+  </property>
+
+  <!-- NameNode 退出安全模式的等待时间（毫秒），设 0 表示报块完成即离开安全模式，避免演示时白等 30 秒。 -->
+  <property>
+    <name>dfs.namenode.safemode.extension</name>
+    <value>0</value>
+  </property>
+
+  <!-- NameNode Web UI 监听所有网卡，便于 2 号把宿主机 9870 映射到 master 后访问。 -->
+  <property>
+    <name>dfs.namenode.http-address</name>
+    <value>0.0.0.0:9870</value>
+  </property>
+</configuration>
