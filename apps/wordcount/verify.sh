@@ -122,7 +122,8 @@ fi
 
 # ---------- 第 2 步：按单词累加 ----------
 # 默认输出用制表符分隔：单词 \t 次数；这里也容忍空格分隔。
-if ! awk -F'[\t ]+' 'NF>=2 && $1!="" {count[$1]+=$2; lines++} END {
+# 顺带剥掉行首可能存在的 UTF-8 BOM（Windows 编辑器保存的 TSV 常带），否则第一个单词会对不上。
+if ! awk -F'[\t ]+' '{ sub(/^\357\273\277/, "", $1) } NF>=2 && $1!="" {count[$1]+=$2; lines++} END {
         if (lines == 0) { exit 3 }
         for (word in count) { printf "%s\t%d\n", word, count[word] }
     }' "${RAW_FILE}" > "${TMP_DIR}/actual.unsorted"; then
@@ -142,7 +143,7 @@ else
     printf 'hadoop\t2\nhello\t2\nworld\t1\n' > "${EXPECTED_SRC}"
 fi
 
-awk -F'[\t ]+' 'NF>=2 && $1!="" {print $1"\t"$2}' "${EXPECTED_SRC}" \
+awk -F'[\t ]+' '{ sub(/^\357\273\277/, "", $1) } NF>=2 && $1!="" {print $1"\t"$2}' "${EXPECTED_SRC}" \
     | LC_ALL=C sort -k1,1 > "${TMP_DIR}/expected.tsv"
 
 [ -s "${TMP_DIR}/expected.tsv" ] || fail "预期词频为空: ${EXPECTED_SOURCE_DESC}"
