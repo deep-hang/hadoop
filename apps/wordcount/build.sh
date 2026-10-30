@@ -6,7 +6,7 @@
 #   bash apps/wordcount/build.sh     无参数；成功返回 0，失败返回非 0
 # 产物：
 #   apps/wordcount/build/classes/    编译后的 class 文件
-#   apps/wordcount/build/wordcount.jar  作业 Jar（含 Main-Class）
+#   apps/wordcount/build/wordcount.jar  作业 Jar
 # 说明：
 #   - 基础镜像没有 Maven，直接用镜像自带的 javac、jar，编译类路径取自 hadoop classpath。
 #   - 脚本自行定位所在目录，从任意当前目录调用都有效。
@@ -31,7 +31,6 @@ SRC_DIR="${SCRIPT_DIR}/src"
 BUILD_DIR="${SCRIPT_DIR}/build"
 CLASSES_DIR="${BUILD_DIR}/classes"
 JAR_FILE="${BUILD_DIR}/wordcount.jar"
-MAIN_CLASS="com.hadooplab.wordcount.WordCountDriver"
 
 fail() {
     echo "BUILD FAIL: $*" >&2
@@ -68,6 +67,8 @@ echo "[1/2] javac ${#SOURCES[@]} 个源文件"
     "${SOURCES[@]}"
 
 echo "[2/2] jar -> ${JAR_FILE}"
-"${JAR_BIN}" cfe "${JAR_FILE}" "${MAIN_CLASS}" -C "${CLASSES_DIR}" .
+# 不写 Main-Class：hadoop jar 只有在清单没有 Main-Class 时才会把第一个参数当主类，
+# 写了 Main-Class 会把 run.sh 传来的主类名当成业务参数，导致参数个数不对。
+"${JAR_BIN}" cf "${JAR_FILE}" -C "${CLASSES_DIR}" .
 
 echo "BUILD PASS: ${JAR_FILE}"
