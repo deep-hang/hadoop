@@ -1,12 +1,12 @@
-# Hadoop：成员 5 精简运行交付
+# 单机与伪分布式使用说明
 
-本分支从团队 main（edab708）建立，交付单机、伪分布式、网页和终端运行功能。运行源码与已验证开发版本 58381cc 一致；不包含成员 5 的自动测试程序、运行记录、输入输出产物或 Docker 镜像。
+5 号的单机、伪分布式、网页和终端运行功能已合入团队 `main`；本次补齐两种模式的自动测试入口。使用统一基础镜像，运行数据不提交 Git。
 
 ## 获取与环境准备
 
 ```powershell
-git clone --branch codex/member5-runtime https://github.com/SgRpg/hadoop.git hadoop-member5
-cd hadoop-member5
+git clone --branch main https://github.com/deep-hang/hadoop.git
+cd hadoop
 ```
 
 需要 Python 3.10+、已启动的 Docker Linux 引擎、Docker Compose，以及统一镜像 `hadoop-base:v0.1`（Java 1.8.0_442、Hadoop 3.3.6）。网页和终端只使用 Python 标准库，无需 npm 或第三方 Python 包；宿主机无需安装 Hadoop 或 Java。
@@ -60,7 +60,29 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\modes\standalone\console.p
 
 中文菜单提供环境检查、单机/伪分布式运行、历史、真实验证、HDFS 查看及服务管理。`console.py --help` 查看命令；原 `manage.ps1` / `manage.sh` 和原网页 `web.py` 也保留。
 
-本精简分支不交付成员 5 自动测试文件，`manage test` 等测试命令不可作为本分支的验收入口。日常运行和每次作业自动进行的结果验证不依赖这些测试文件。测试程序继续保存在原开发分支。
+## 自动测试
+
+在电脑终端、项目根目录依次执行；测试前需要 Docker Linux 引擎运行、Compose 和统一镜像可用。不需要手动初始化测试集群。
+
+Windows PowerShell：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ./modes/standalone/manage.ps1 test
+powershell -NoProfile -ExecutionPolicy Bypass -File ./modes/pseudo/manage.ps1 test
+```
+
+Mac/Linux 终端：
+
+```bash
+bash modes/standalone/manage.sh test
+bash modes/pseudo/manage.sh test
+```
+
+单机测试运行真实本地 Hadoop 作业并检查结果、异常输入和已有输出保护。
+伪分布式测试另查显式初始化、单节点 HDFS、重启和容器重建的数据保留。
+两项测试均应返回退出码 0；结果保存在输出的 `EVIDENCE` 路径下。
+每项使用随机测试项目和独立数据，伪分布式网页使用自动分配的端口，结束后只清理自己的测试容器和卷；现有演示数据不会被作为测试输入或删除。
+这些是两种模式的终端与运行链路测试，不包含网页全部交互的自动测试。详见 [单机测试](../../../tests/standalone/) 和 [伪分布式测试](../../../tests/pseudo/)。
 
 ## 资源、路径与常见问题
 
@@ -73,4 +95,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\modes\standalone\console.p
 - 提示网页已启动时使用现有页面；需要重启时在原终端停止。浏览器首页刷新会清空未提交输入，已提交任务可从历史恢复。
 - Windows PowerShell、CMD、Git Bash、内置 Chromium 及真实 Docker 作业在开发版本已验证；原生 Mac/Linux 与全部浏览器未实测。此分支另做源码一致性、依赖导入、配置解析和启动帮助检查，不把这些检查冒充新的完整 Hadoop 回归。
 
-本分支只包含运行交付；组长核验后按团队流程决定是否合并，不自动合并团队 main。
+PPT 说明两种模式的配置和运行差异，视频演示实际操作；测试日志用于排查问题，不要求另做一份长篇实验记录。
