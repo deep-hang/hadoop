@@ -105,32 +105,79 @@ L5 的交叉校验：不用 Java，直接用 `tr / sort / uniq` 把 5 个输入�
 | `hadoop jar` 参数错位 | 无论传几个参数，驱动都打印用法并返回 2 | `build.sh` 用 `jar cfe` 往清单里写了 `Main-Class`，`hadoop jar <jar> <主类> ...` 时主类名不再被当成主类，而成了第一个业务参数 | 改用 `jar cf`，不写 `Main-Class`，与仓库既有约定一致 |
 | 预期文件带 BOM | 边界用例首个单词对不上：`-﻿2026 / +2026` | 预期 TSV 被以带 BOM 的 UTF-8 保存，第一个单词前面多了不可见字符 | 去掉两个预期文件的 BOM，并在 `verify.sh` 解析时兜底剥除行首 BOM |
 
-## 4. 阶段二：待执行（集群就绪后填写）
+## 4. 阶段二：真实集群联调（2026-10-30 已完成）
 
-下列命令需要在 master 容器内执行，结果贴在本节，并在 `docs/modules/wordcount/screenshots/` 放截图。
+集群用仓库自带的 `compose/distributed.yaml` 起三节点（master、worker1、worker2），镜像 `hadoop-base:v0.1`。
+启动后先确认服务真的注册上了，而不是容器起来就算：
+
+```
+hdfs dfsadmin -report  ->  Live datanodes (2): worker1、worker2
+yarn node -list        ->  Total Nodes:2，worker1、worker2 均为 RUNNING
+```
+
+下列命令都在 master 容器内、项目根目录 `/workspace` 执行。
 
 | 编号 | 项目 | 命令 | 结果 |
 | --- | --- | --- | --- |
-| C1 | 编译 | `bash /workspace/apps/wordcount/build.sh` | 已在容器内完成，见 L1 |
-| C2 | 上传固定输入 | `hdfs dfs -put .../input/*.txt /project/input/wordcount` | 待执行 |
-| C3 | 运行固定小样例 | `bash run.sh /project/input/wordcount /project/output/wordcount/run-001` | 待执行 |
-| C4 | 核对结果 | `bash verify.sh /project/output/wordcount/run-001` | 待执行 |
-| C5 | 查看输出 | `hdfs dfs -cat '/project/output/wordcount/run-001/part-r-*'` | 待执行 |
-| C6 | 边界输入 | `bash tests/wordcount/check-edge-cases.sh` | 待执行 |
-| C7 | 大数据 + 双 Worker | `bash tests/wordcount/check-large.sh 5 2000` | 待执行 |
-| C8 | 失败用例 | `bash tests/wordcount/check-failure-cases.sh` | 待执行 |
-| C9 | 自带示例对照 | 见 4 号指南的命令 | 待执行 |
-| C10 | 本地模式调试 | `WORDCOUNT_LOCAL=1 bash run.sh <本地输入> <本地输出>` | 已完成，见 L2—L6 |
+| C1 | 编译 | `bash apps/wordcount/build.sh` | PASS，`BUILD PASS` |
+| C2 | 上传固定输入 | `hdfs dfs -put -f apps/wordcount/input/*.txt /project/input/wordcount` | 2 个文件，19 + 13 字节 |
+| C3 | 运行固定小样例 | `bash apps/wordcount/run.sh /project/input/wordcount /project/output/wordcount/run-001` | `RUN PASS`，作业 completed successfully |
+| C4 | 核对结果 | `bash apps/wordcount/verify.sh /project/output/wordcount/run-001` | `VERIFY PASS: 3 个单词与预期完全一致（结果文件 2 个）` |
+| C5 | 查看输出 | `hdfs dfs -cat '/project/output/wordcount/run-001/part-r-*'` | `hadoop 2 / hello 2 / world 1` |
+| C6 | 边界输入 | `bash tests/wordcount/check-edge-cases.sh` | `EDGE CASES PASS`，5 个单词与预期一致 |
+| C7 | 大数据 + 双 Worker | `bash tests/wordcount/check-large.sh 5 2000` | `LARGE INPUT PASS`，12 个单词、2 个 part 文件 |
+| C8 | 失败用例 | `bash tests/wordcount/check-failure-cases.sh` | `PASS=5 FAIL=0`，`FAILURE CASES PASS` |
+| C9 | 自带示例对照 | `hadoop jar hadoop-mapreduce-examples-3.3.6.jar wordcount` 跑同一输入 | 与本模块输出**逐行完全一致** |
+| C10 | 本地模式调试 | `WORDCOUNT_LOCAL=1 bash run.sh ...` | 见第 3 节 L2—L6 |
 
-### 分布式执行的证据要求
+C3 的实际输出正好是固定样例应有的三个词：
 
-C7 要留下三类证据，缺一不可：
+```
+hadoop   2
+hello    2
+world    1
+```
 
-1. 作业的 application id 与 Map / Reduce 任务数（Map 数 = 输入分片数，Reduce 数 = 2）；
-2. 每个 Map / Reduce Attempt 所在的节点名，**同时出现 worker1 与 worker2**；
-3. 输出目录里 `part-r-*` 的个数等于 2，且内容核对通过。
+### 4.1 分布式执行的证据（C7）
 
-只截“两个 DataNode 在线”不算计算分布的证据。
+输入是 5 个文件（`gen-large-input.sh 5 2000` 生成，共 41755 个单词）。
+
+**证据一：application id 与任务数**
+
+```
+job_1793364628657_0002
+Launched map tasks=5
+Launched reduce tasks=2
+```
+
+**证据二：每个任务跑在哪个节点**（读两个 worker 上 NodeManager 的容器日志目录，
+按容器里的 `attempt_` 编号对应任务）
+
+| 节点 | 容器 | 对应任务 |
+| --- | --- | --- |
+| worker1 | container_..._01_000002 | `m_000000` Map |
+| worker1 | container_..._01_000003 | `m_000001` Map |
+| worker1 | container_..._01_000004 | `m_000002` Map |
+| worker1 | container_..._01_000007 | `r_000000` Reduce |
+| worker2 | container_..._01_000005 | `m_000003` Map |
+| worker2 | container_..._01_000006 | `m_000004` Map |
+| worker2 | container_..._01_000008 | `r_000001` Reduce |
+
+Map 任务 3 个在 worker1、2 个在 worker2；Reduce 任务两个节点各 1 个。
+**两个 Worker 都真实参与了 Map 和 Reduce**，不是只有 DataNode 在线。
+
+**证据三：输出侧**
+
+```
+hdfs dfs -ls /project/output/wordcount/large-001 | grep -c part-r-  ->  2
+VERIFY PASS: 12 个单词与预期完全一致（结果文件 2 个）
+```
+
+### 4.2 联调中顺带验证到的行为
+
+- 对已存在的输出目录重跑 `run.sh`：退出码 2，旧数据未被删除（`check-failure-cases.sh` 第 2 项专门核对了这一点）。
+- 输入路径不存在：退出码 2，不会去提交一个注定失败的作业。
+- `verify.sh` 对不存在的输出目录返回 1，对错误预期返回 1。
 
 ## 5. 复现步骤
 
@@ -148,4 +195,14 @@ cd /workspace
 bash apps/wordcount/build.sh
 WORDCOUNT_LOCAL=1 bash apps/wordcount/run.sh  /workspace/apps/wordcount/input /workspace/runtime/wc/fixed
 WORDCOUNT_LOCAL=1 bash apps/wordcount/verify.sh /workspace/runtime/wc/fixed
+```
+
+在三节点集群上复现第 4 节（在宿主机项目根目录执行，Git Bash 下要 `export MSYS_NO_PATHCONV=1`，
+否则 `/workspace/...` 这类容器内路径会被改写成 Windows 路径）：
+
+```bash
+docker compose --env-file .development -f compose/distributed.yaml run --rm master \
+  bash /workspace/scripts/hadoop-node.sh init-namenode      # 只在首次或换卷时执行
+docker compose --env-file .development -f compose/distributed.yaml up -d
+docker exec compose-master-1 bash -lc 'cd /workspace && bash tests/wordcount/check-large.sh 5 2000'
 ```
