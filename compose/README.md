@@ -24,11 +24,14 @@ distributed.yaml 是正式三节点 Hadoop 编排，使用 hadoop-base:v0.1。
 
 ## 项目名与数据保留
 
-下面命令在 Windows PowerShell 的项目根目录执行，
-使用本次成功联调的项目名 hadoop-distributed-recovery。
+下面命令在电脑终端的项目根目录执行，统一使用项目名
+`hadoop-distributed-recovery`。Windows 使用 PowerShell；Mac 使用终端，
+除下面的环境变量设置外，Docker 命令相同。
 
-旧 hadoop-distributed 项目的故障数据卷保留，后续继续使用
-recovery 项目已有的新卷，不重复初始化。
+数据卷保存在各自电脑上，不会随 Git 下载：
+- **新成员首次使用**：本机没有此项目的数据，需要执行下面的首次初始化步骤。
+- **已用此项目初始化并运行过**：继续使用本机已有的数据卷，正常启动时跳过初始化。
+- **2 号原来的故障环境**：旧 `hadoop-distributed` 项目的卷保留；新环境用 recovery 项目，不切回旧项目。
 
 Compose 项目名决定默认网络和命名卷的隔离。
 同一套数据必须始终使用相同项目名。
@@ -77,7 +80,8 @@ docker compose --env-file .development -p hadoop-distributed-recovery -f compose
 
 ## 仅首次初始化全新环境
 
-已有数据卷的正常使用跳过此步：
+新成员第一次在本机运行此项目时执行一次。已有正常初始化数据的成员跳过此步；
+不要根据别人的电脑已经运行过，就跳过自己电脑的首次初始化。
 
 ```powershell
 docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml run --rm --no-deps master bash /workspace/scripts/hadoop-node.sh init-namenode
@@ -107,6 +111,33 @@ docker compose --env-file .development -p hadoop-distributed-recovery -f compose
 
 应有两个 Live DataNode、安全模式 OFF、两个 RUNNING NodeManager。
 容器 Up 不等于 Hadoop 已就绪；未就绪时等待后复查，失败时查看日志。
+
+## 运行模块测试
+
+保持在电脑终端、项目根目录，使用同一个项目名。需要已接入 3、4 号的测试代码。
+
+Windows 的三节点名称、网络和卷权限检查：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ./tests/distributed/check-skeleton.ps1 -Project hadoop-distributed-recovery
+```
+
+HDFS 检查（Windows / Mac）：
+
+```text
+docker compose --env-file .development -p hadoop-distributed-recovery -f compose/distributed.yaml exec -T master bash /workspace/tests/hdfs/run-all.sh
+```
+
+YARN 真实计算检查（Windows）：
+
+```powershell
+python tests/yarn-mapreduce/check-yarn.py --project hadoop-distributed-recovery
+```
+
+Mac 将 `python` 换成 `python3`。请保留 `--project` 参数，4 号脚本的默认项目名不同；
+省略后会查找另一个集群，可能报找不到容器。
+三项分别应输出 `SKELETON_CHECK_PASS`、`HDFS_TEST_PASS` 和 YARN 的 `PASS`，退出码为 0。
+名称、网络检查不代替 HDFS/YARN 测试；失败时先检查项目名、服务状态和日志。
 
 ## 日志、重启与停止
 

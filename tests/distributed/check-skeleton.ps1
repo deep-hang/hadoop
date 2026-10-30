@@ -1,3 +1,8 @@
+param(
+    [ValidateNotNullOrEmpty()]
+    [string]$Project = "hadoop-distributed-recovery"
+)
+
 $ErrorActionPreference = "Stop"
 
 # Locate the repository from this script's directory.
@@ -8,7 +13,7 @@ try {
     $composeArgs = @(
         "compose",
         "--env-file", ".development",
-        "-p", "hadoop-distributed",
+        "-p", $Project,
         "-f", "compose/distributed.yaml"
     )
 
