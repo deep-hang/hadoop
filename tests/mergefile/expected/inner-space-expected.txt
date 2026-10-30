@@ -1,0 +1,2 @@
+a  b	1	inner-space.txt
+a b	1	inner-space.txt
