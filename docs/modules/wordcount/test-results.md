@@ -206,3 +206,97 @@ docker compose --env-file .development -f compose/distributed.yaml run --rm mast
 docker compose --env-file .development -f compose/distributed.yaml up -d
 docker exec compose-master-1 bash -lc 'cd /workspace && bash tests/wordcount/check-large.sh 5 2000'
 ```
+
+## 6. 评审意见修复（2026-10-31）
+
+评审在自己独立复验后指出两处脚本缺陷，都属于“该失败却报成功”和“动到别人的数据”这两类，
+必须修。下面分条记录现象、根因、修法和验证证据。
+
+### 6.1 `verify.sh` 把格式错误的数据判为通过
+
+**现象**：在结果里多加一行只有单词、没有次数的残行，或者把某个词的次数从 `2` 改成 `2.9`，
+`verify.sh` 仍然输出 `VERIFY PASS`。
+
+**根因**：旧实现是
+
+```awk
+NF>=2 && $1!="" {count[$1]+=$2; lines++}
+```
+
+两条路都会放过坏数据：
+
+1. `NF>=2` 只是一个过滤器。不满足条件的行不会报错，只会被**悄悄丢掉**，所以多出来的残行等于不存在；
+2. `count[$1]+=$2` 用的是 awk 的隐式数值转换，字符串 `2.9` 会被截断成整数 2，
+   再经 `printf "%d"` 输出正好等于预期的 `2`，肉眼和程序都看不出来。
+
+**修法**：改成逐行显式校验，看不懂就报错而不是跳过。
+
+- 每行必须恰好两列，`nf != 2` 直接记一条错误（残行、三列、拼接错位都在这里拦住）；
+- 次数用字符串匹配 `^[0-9]+$` 判断，而不是先转数字再看，这样 `2.9`、`-3`、`abc`、空值全部被判错；
+- 错误行连同行号和原文一起打印出来（最多 10 行，末尾给出总条数），方便直接定位；
+- 完全空白的行仍然跳过（多文件 `cat` 拼接不产生数据，不算错误数据）；
+- 行首 UTF-8 BOM 与行尾 CR 只是编码差异，先剥掉再判断，保留原来的兼容性；
+- **预期文件走同一套规则**：`WORDCOUNT_EXPECTED` 指的文件如果写了 `2.9`，也会直接被判格式错误，
+  而不是拿一份坏答案去比对。
+
+**验证**（本机 Git Bash，`gawk 5.4`；另用 `gawk --posix` 在 `LC_ALL=C` 与 `LC_ALL=zh_CN.UTF-8`
+下各复测一遍，结果一致）：
+
+| 构造的结果内容 | 期望 | 实际 |
+| --- | --- | --- |
+| 正确（hadoop=2 hello=2 world=1） | 通过 | `VERIFY PASS`，退出码 0 |
+| 多一行 `garbage`（1 列） | 失败 | 退出码 1，指出“第 4 行 应为两列…实际 1 列: [garbage]” |
+| `hello 2.9` | 失败 | 退出码 1，指出“第 2 行 次数不是非负整数: [hello 2.9]” |
+| `hello -3` | 失败 | 退出码 1，指出“次数不是非负整数” |
+| `hello 2 extra`（3 列） | 失败 | 退出码 1，指出“应为两列…实际 3 列” |
+| 空文件 | 失败 | 退出码 1，提示没有可解析行 |
+| 预期文件里写 `2.9` | 失败 | 退出码 1，提示预期文件格式错误 |
+| 带 BOM + CRLF、内容正确 | 通过 | 退出码 0（兼容性未被破坏） |
+| 两个 part 文件分开写 | 通过 | 退出码 0，`结果文件 2 个` |
+| 边界用例（含中文词） | 通过 | `VERIFY PASS: 5 个单词`，中文词正常比对 |
+
+### 6.2 `check-failure-cases.sh` 会删掉固定目录里的其他文件
+
+**现象**：脚本结束时会删掉整个固定的测试目录，事先放在里面的其他文件一起没了。
+
+**根因**：第 2 项用的是写死的目录名 `failure-case-guard`。如果这个目录**事先已经存在**，
+`dfs -mkdir -p` 不会报错，`dfs -put -f` 会覆盖同名文件，最后的 `dfs -rm -r -f` 连目录里
+别人的文件一起删掉。脚本自己还报 `FAILURE CASES PASS`，等于“删了别人的数据还说全绿”。
+
+**修法**：每次运行都用独占目录，只清理本次创建的。
+
+- 运行标识 `RUN_ID = 日期-时间-进程号-随机数`，HDFS 上的测试目录都拼上它：
+  `failure-case-guard-<RUN_ID>`、`failure-case-never-<RUN_ID>`、`failure-case-missing-<RUN_ID>`；
+- 创建前先 `dfs -test -e` 确认目标不存在，存在就拒绝继续（宁可报错也不动别人目录）；
+- 本地临时文件原先写在 `tests/wordcount/build/` 这个共享目录，改成 `mktemp -d` 的一次性目录；
+- `trap cleanup EXIT` 统一收尾，只删带本次 `RUN_ID` 的路径和那个临时目录；
+- 顺手加了第 5 项：把 6.1 的两个坏数据场景接进失败用例，脚本层面也能兜住回归。
+
+**对照验证**：用一套把 HDFS 路径映射到本地目录的替身脚本（stub），在同样的预置数据上分别跑
+修复前（`git show HEAD:` 取出的旧版）和修复后的脚本。预置内容是
+`team-shared-results/part-r-00000`、`keep-me.txt`，外加一个**恰好同名**的 `failure-case-guard/part-r-00000`。
+
+| 版本 | 脚本自身结论 | 预置的 `failure-case-guard/part-r-00000` |
+| --- | --- | --- |
+| 修复前 | `PASS=5 FAIL=0`，`FAILURE CASES PASS` | **被删除** |
+| 修复后 | `PASS=8 FAIL=0`，`FAILURE CASES PASS` | 完整保留，运行后无残留目录 |
+
+修复后在本地替身环境里 8 项全过：输入不存在（退出码 2，且不留输出目录）、输出已存在（退出码 2，
+旧输出未被删）、核对不存在的输出（退出码 1）、错误预期（退出码 1）、两处格式错误数据（退出码 1）。
+
+### 6.3 这一轮没能覆盖的部分
+
+上面两条修复的验证在本机完成，没有在容器里重跑。原因是复验当天 `Docker Desktop` 的 Linux 引擎
+依赖 `wsl.exe`，而当前命令安全策略把 `wsl.exe` 列入了黑名单，集群起不来。因此：
+
+- 已确认：脚本语法、LF 换行、参数契约（`check-script-contract.sh` 14 项全 PASS）、
+  `verify.sh` 的全部格式分支、`check-failure-cases.sh` 的目录隔离，都在本机跑过；
+- 未确认：修改后的脚本在容器内 `gawk`/`mawk` 下、以及在真实 HDFS 上的表现。
+  代码只用了 POSIX awk 特性（`split`、`ENVIRON`、`printf > file`），并且用 `gawk --posix`
+  加两种 locale 复测过，预期一致，但仍应在集群上补跑一次：
+
+```bash
+docker exec compose-master-1 bash -lc 'cd /workspace && bash tests/wordcount/check-failure-cases.sh'
+docker exec compose-master-1 bash -lc 'cd /workspace && bash apps/wordcount/verify.sh /project/output/wordcount/run-001'
+```
+

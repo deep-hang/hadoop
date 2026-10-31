@@ -7,15 +7,20 @@
 #
 # 做什么：
 #   1. 确认输出位置存在，并至少有一个 part-r-* 结果文件（不把 _SUCCESS 当作唯一证据）；
-#   2. 把全部 part-r-* 读出来，按“单词 -> 次数”累加（多 Reduce 任务时同一单词不会跨文件重复，
+#   2. 逐行校验格式：每行必须恰好两列（单词 + 次数），次数必须是非负十进制整数。
+#      格式不对的行不会被“跳过”或“四舍五入”，而是直接判定失败并打印出问题的那几行
+#      （例如只写了一列的残行、次数写成 2.9、负数、三列等）；
+#   3. 把全部 part-r-* 读出来，按“单词 -> 次数”累加（多 Reduce 任务时同一单词不会跨文件重复，
 #      但累加写法能兼容被拆分过的输出）；
-#   3. 与预期词频逐行比对：单词集合、每个单词的次数都必须完全一致，多一个词或少一个词都算失败。
+#   4. 与预期词频逐行比对：单词集合、每个单词的次数都必须完全一致，多一个词或少一个词都算失败。
+#      预期文件同样做格式校验，写错的预期不会被当成“合法的参考答案”。
 #
 # 预期从哪来：
 #   默认核对本模块 README 固定的最小样例（input/a.txt + input/b.txt）：
 #       hadoop=2  hello=2  world=1
 #   核对其他数据集时用环境变量指定预期文件，两列：单词 制表符 次数（空格分隔也接受），
-#       WORDCOUNT_EXPECTED=tests/wordcount/cases/expected/large.tsv \
+#   预期文件本身也按同一格式校验，写错一行会直接报错而不是拿去比对：
+#       WORDCOUNT_EXPECTED=tests/wordcount/build/expected/large.tsv \
 #         bash apps/wordcount/verify.sh /project/output/wordcount/large-001
 #
 # 路径语义与 run.sh 一致：不带协议头的按 HDFS 路径解释（自动补 HDFS_URI）；
@@ -44,7 +49,7 @@ usage() {
     bash verify.sh /project/output/wordcount/run-001
 
   核对其他数据集:
-    WORDCOUNT_EXPECTED=tests/wordcount/cases/expected/large.tsv \
+    WORDCOUNT_EXPECTED=tests/wordcount/build/expected/large.tsv \
       bash verify.sh /project/output/wordcount/large-001
 
   本地调试模式的输出:
@@ -62,7 +67,7 @@ OUTPUT="$1"
 
 TMP_DIR="$(mktemp -d)"
 cleanup() {
-    rm -rf "${TMP_DIR}"
+    rm -rf "${TMP_DIR}" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -120,15 +125,57 @@ else
     fi
 fi
 
-# ---------- 第 2 步：按单词累加 ----------
+# ---------- 第 2 步：逐行校验格式，并按单词累加 ----------
 # 默认输出用制表符分隔：单词 \t 次数；这里也容忍空格分隔。
-# 顺带剥掉行首可能存在的 UTF-8 BOM（Windows 编辑器保存的 TSV 常带），否则第一个单词会对不上。
-if ! awk -F'[\t ]+' '{ sub(/^\357\273\277/, "", $1) } NF>=2 && $1!="" {count[$1]+=$2; lines++} END {
-        if (lines == 0) { exit 3 }
+# 每行都必须严格解析，不能“看不懂就跳过”：
+#   - 结果是两列，多一列少一列都算错（残行、拼接错位都在这里被拦住）；
+#   - 次数必须匹配 ^[0-9]+$，用字符串判断而不是数值判断，否则 awk 会把 2.9 静默截断成 2；
+#   - 负数、小数、空次数、非数字全部算错。
+# 行首 UTF-8 BOM 和行尾 CR 只是编码差异，先剥掉再判断；完全空白的行不携带数据，跳过。
+FORMAT_ERRORS="${TMP_DIR}/result-format-errors.txt"
+# 错误清单路径通过环境变量交给 awk：awk 的 -v 赋值会解释反斜杠，
+# Windows 下临时目录形如 C:\Users\... 会被吃成 C:Users...，改用 ENVIRON 原样传递。
+AWK_RC=0
+WC_FORMAT_ERRORS="${FORMAT_ERRORS}" awk '
+    BEGIN { errfile = ENVIRON["WC_FORMAT_ERRORS"] }
+    function bad(msg) {
+        nbad++
+        if (nbad <= 10) printf("  第 %d 行 %s: [%s]\n", NR, msg, line) > errfile
+    }
+    {
+        line = $0
+        sub(/\r$/, "", line)
+        sub(/^\357\273\277/, "", line)
+        if (line ~ /^[ \t]*$/) next
+        nf = split(line, fields, /[ \t]+/)
+        if (nf != 2)             { bad("应为两列（单词 + 次数），实际 " nf " 列"); next }
+        if (fields[1] == "")     { bad("单词为空"); next }
+        if (fields[2] !~ /^[0-9]+$/) { bad("次数不是非负整数"); next }
+        count[fields[1]] += fields[2] + 0
+        rows++
+    }
+    END {
+        if (nbad > 0) {
+            printf("  ……共 %d 行格式错误\n", nbad) > errfile
+            exit 4
+        }
+        if (rows == 0) exit 3
         for (word in count) { printf "%s\t%d\n", word, count[word] }
-    }' "${RAW_FILE}" > "${TMP_DIR}/actual.unsorted"; then
-    fail "结果文件里没有可解析的“单词 次数”行（文件为空或格式异常）"
-fi
+    }
+' "${RAW_FILE}" > "${TMP_DIR}/actual.unsorted" || AWK_RC=$?
+
+case "${AWK_RC}" in
+    0) ;;
+    3)
+        fail "结果文件里没有可解析的“单词 次数”行（文件为空）"
+        ;;
+    *)
+        echo "VERIFY FAIL: 结果格式错误，每行必须是“单词 次数”，且次数为非负整数" >&2
+        echo "  问题行（最多列出前 10 行）:" >&2
+        if [ -s "${FORMAT_ERRORS}" ]; then cat "${FORMAT_ERRORS}" >&2; fi
+        exit 1
+        ;;
+esac
 
 LC_ALL=C sort -k1,1 "${TMP_DIR}/actual.unsorted" > "${TMP_DIR}/actual.tsv"
 
@@ -143,8 +190,35 @@ else
     printf 'hadoop\t2\nhello\t2\nworld\t1\n' > "${EXPECTED_SRC}"
 fi
 
-awk -F'[\t ]+' '{ sub(/^\357\273\277/, "", $1) } NF>=2 && $1!="" {print $1"\t"$2}' "${EXPECTED_SRC}" \
-    | LC_ALL=C sort -k1,1 > "${TMP_DIR}/expected.tsv"
+# 预期文件走同一套格式规则：写错一行就报错，而不是拿一份坏答案去比。
+EXPECTED_ERRORS="${TMP_DIR}/expected-format-errors.txt"
+EXPECTED_RC=0
+WC_EXPECTED_ERRORS="${EXPECTED_ERRORS}" awk '
+    BEGIN { errfile = ENVIRON["WC_EXPECTED_ERRORS"] }
+    function bad(msg) {
+        nbad++
+        if (nbad <= 10) printf("  第 %d 行 %s: [%s]\n", NR, msg, line) > errfile
+    }
+    {
+        line = $0
+        sub(/\r$/, "", line)
+        sub(/^\357\273\277/, "", line)
+        if (line ~ /^[ \t]*$/) next
+        nf = split(line, fields, /[ \t]+/)
+        if (nf != 2)             { bad("应为两列（单词 + 次数），实际 " nf " 列"); next }
+        if (fields[1] == "")     { bad("单词为空"); next }
+        if (fields[2] !~ /^[0-9]+$/) { bad("次数不是非负整数"); next }
+        print fields[1]"\t"fields[2]
+    }
+    END { if (nbad > 0) exit 4 }
+' "${EXPECTED_SRC}" | LC_ALL=C sort -k1,1 > "${TMP_DIR}/expected.tsv" || EXPECTED_RC=$?
+
+if [ "${EXPECTED_RC}" -ne 0 ]; then
+    echo "VERIFY FAIL: 预期文件格式错误，每行必须是“单词 次数”，且次数为非负整数" >&2
+    echo "  预期来源: ${EXPECTED_SOURCE_DESC}" >&2
+    if [ -s "${EXPECTED_ERRORS}" ]; then cat "${EXPECTED_ERRORS}" >&2; fi
+    exit 1
+fi
 
 [ -s "${TMP_DIR}/expected.tsv" ] || fail "预期词频为空: ${EXPECTED_SOURCE_DESC}"
 

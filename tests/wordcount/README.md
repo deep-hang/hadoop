@@ -82,4 +82,7 @@ bash tests/wordcount/gen-large-input.sh 5 2000
 - 确认旧结果不需要了，自己 `hdfs dfs -rm -r <旧目录>`；
 - 或者修改测试脚本里的 `OUTPUT_DIR_HDFS` 变量换成新名字。
 
-脚本只在明确属于自己创建的临时目录（如 `check-failure-cases.sh` 的 `failure-case-guard`）上做删除。
+脚本只在明确属于自己创建的临时目录上做删除。`check-failure-cases.sh` 每次运行都会用
+“日期-时间-进程号-随机数”拼出独占的目录名（如 `failure-case-guard-20261031-133056-1405-29553`），
+创建前先确认它事先不存在，结束时只删这一个；本地临时文件放在 `mktemp -d` 的一次性目录里。
+因此往输出根目录预置的其他文件不会被删。
