@@ -1,0 +1,3 @@
+$ hdfs dfs -cat /project/input/hdfs-demo/demo-001.txt
+hello hadoop
+[exit=0]

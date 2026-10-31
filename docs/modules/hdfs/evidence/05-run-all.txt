@@ -1,0 +1,90 @@
+$ bash /workspace/tests/hdfs/run-all.sh
+[hdfs] ===== check-config.sh =====
+[hdfs] HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+[hdfs] PASS: fs.defaultFS=hdfs://master:9000
+[hdfs] PASS: dfs.namenode.name.dir=/var/lib/hadoop/hdfs/namenode
+[hdfs] PASS: dfs.datanode.data.dir=/var/lib/hadoop/hdfs/datanode
+[hdfs] PASS: dfs.replication=2
+[hdfs] dfs.namenode.safemode.extension=0
+HDFS_CONFIG_PASS
+[hdfs] ===== check-datanodes.sh =====
+[hdfs] 当前 Live DataNode：
+    172.19.0.2 worker2
+    172.19.0.3 worker1
+[hdfs] PASS: worker1、worker2 的 DataNode 均已注册（共 2 个）
+HDFS_DATANODES_PASS
+[hdfs] ===== check-readwrite.sh =====
+[hdfs] 创建目录 /project/input/hdfs-demo
+[hdfs] 上传 /workspace/tests/hdfs/fixtures/sample-001.txt → /project/input/hdfs-demo/sample-001.txt
+[hdfs] hdfs dfs -ls：
+    -rw-r--r--   2 hadoop supergroup         13 2026-10-31 12:53 /project/input/hdfs-demo/sample-001.txt
+[hdfs] PASS: 文件大小一致：13 字节
+[hdfs] PASS: 文件副本数为 2
+[hdfs] PASS: cat 内容与固定输入逐字节一致
+[hdfs] PASS: get 取回的内容与固定输入逐字节一致
+[hdfs] PASS: 第二个固定输入已就位：/project/input/hdfs-demo/sample-002.txt
+[hdfs] 目录清单：
+    Found 3 items
+    -rw-r--r--   2 hadoop supergroup         13 2026-10-31 12:53 /project/input/hdfs-demo/demo-001.txt
+    -rw-r--r--   2 hadoop supergroup         13 2026-10-31 12:53 /project/input/hdfs-demo/sample-001.txt
+    -rw-r--r--   2 hadoop supergroup         55 2026-10-31 12:53 /project/input/hdfs-demo/sample-002.txt
+HDFS_READWRITE_PASS
+[hdfs] ===== check-blocks.sh =====
+[hdfs] hdfs fsck /project/input/hdfs-demo/sample-001.txt -files -blocks -locations
+    Connecting to namenode via http://master:9870/fsck?ugi=hadoop&files=1&blocks=1&locations=1&path=%2Fproject%2Finput%2Fhdfs-demo%2Fsample-001.txt
+    FSCK started by hadoop (auth:SIMPLE) from /172.19.0.4 for path /project/input/hdfs-demo/sample-001.txt at Sat Oct 31 12:53:54 UTC 2026
+    
+    /project/input/hdfs-demo/sample-001.txt 13 bytes, replicated: replication=2, 1 block(s):  OK
+    0. BP-1502765186-172.19.0.2-1793359852708:blk_1073741841_1017 len=13 Live_repl=2  [DatanodeInfoWithStorage[172.19.0.3:9866,DS-7bdf7ab3-a670-4b4c-aba0-5b8bdf96761a,DISK], DatanodeInfoWithStorage[172.19.0.2:9866,DS-2e051af2-b37e-4ab8-ad24-49c4d0b0ac4f,DISK]]
+    
+    
+    Status: HEALTHY
+     Number of data-nodes:	2
+     Number of racks:		1
+     Total dirs:			0
+     Total symlinks:		0
+    
+    Replicated Blocks:
+     Total size:	13 B
+     Total files:	1
+     Total blocks (validated):	1 (avg. block size 13 B)
+     Minimally replicated blocks:	1 (100.0 %)
+     Over-replicated blocks:	0 (0.0 %)
+     Under-replicated blocks:	0 (0.0 %)
+     Mis-replicated blocks:		0 (0.0 %)
+     Default replication factor:	2
+     Average block replication:	2.0
+     Missing blocks:		0
+     Corrupt blocks:		0
+     Missing replicas:		0 (0.0 %)
+     Blocks queued for replication:	0
+    
+    Erasure Coded Block Groups:
+     Total size:	0 B
+     Total files:	0
+     Total block groups (validated):	0
+     Minimally erasure-coded block groups:	0
+     Over-erasure-coded block groups:	0
+     Under-erasure-coded block groups:	0
+     Unsatisfactory placement block groups:	0
+     Average block group size:	0.0
+     Missing block groups:		0
+     Corrupt block groups:		0
+     Missing internal blocks:	0
+     Blocks queued for replication:	0
+    FSCK ended at Sat Oct 31 12:53:54 UTC 2026 in 1 milliseconds
+    
+    
+    The filesystem under path '/project/input/hdfs-demo/sample-001.txt' is HEALTHY
+[hdfs] PASS: fsck 状态 HEALTHY
+[hdfs] PASS: Missing blocks = 0
+[hdfs] PASS: Under-replicated blocks = 0
+[hdfs] PASS: Corrupt blocks = 0
+[hdfs] 块 1 副本位置：172.19.0.2 172.19.0.3 
+[hdfs] Live DataNode 与 IP 对应关系：
+    172.19.0.2 worker2
+    172.19.0.3 worker1
+[hdfs] PASS: 共 1 个块，每个块 2 个副本，覆盖 worker1 与 worker2
+HDFS_BLOCKS_PASS
+HDFS_TEST_PASS
+[exit=0]

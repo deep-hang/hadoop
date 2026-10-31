@@ -1,0 +1,11 @@
+$ bash /workspace/tests/hdfs/check-persistence.sh record
+[hdfs] 上传固定输入 /workspace/tests/hdfs/fixtures/sample-001.txt → /project/input/hdfs-demo/persist-001.txt
+[hdfs] 重启前指纹：
+    SHA256=fd5a07e96c6b83e043f24422ed5c1bf35b5f042b0ba8a3a2a760e345dd862d3f
+    BLOCKS=BP-1502765186-172.19.0.2-1793359852708:blk_1073741843_1019
+    RECORDED_AT=2026-10-31T12:54:03+00:00
+    RECORDED_BY=master
+[hdfs] PASS: 已记录到 /workspace/tests/hdfs/runtime/persistence-001.env（在 /workspace 内，容器重建后仍在）
+下一步：让 2 号用不删卷的方式重启集群，再执行 verify
+HDFS_PERSISTENCE_RECORDED
+[exit=0]

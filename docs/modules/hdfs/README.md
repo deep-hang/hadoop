@@ -1,5 +1,7 @@
 # 3 号：HDFS 分布式存储
 
+> 实测记录见 [results.md](results.md)：2026-10-31 在三节点真实集群上跑通，含 `HDFS_TEST_PASS`、`HDFS_PERSISTENCE_PASS` 与副本位置证据。
+
 ## 1. 你要完成什么
 
 让 master 的 NameNode 管理两个 worker 的 DataNode，证明文件能上传、读取，数据块和副本确实在两个 worker 上，重启不丢文件。

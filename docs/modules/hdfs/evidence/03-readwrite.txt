@@ -1,0 +1,19 @@
+$ mkdir -p /tmp/hdfs-demo
+[exit=0]
+$ printf 'hello hadoop\n' > /tmp/hdfs-demo/demo-001.txt
+[exit=0]
+
+$ hdfs dfs -mkdir -p /project/input/hdfs-demo
+[exit=0]
+
+$ hdfs dfs -put -f /tmp/hdfs-demo/demo-001.txt /project/input/hdfs-demo/demo-001.txt
+[exit=0]
+
+$ hdfs dfs -ls -h /project/input/hdfs-demo/demo-001.txt
+-rw-r--r--   2 hadoop supergroup         13 2026-10-31 12:53 /project/input/hdfs-demo/demo-001.txt
+
+$ hdfs dfs -cat /project/input/hdfs-demo/demo-001.txt
+hello hadoop
+
+$ hdfs dfs -stat "%b %r %o" /project/input/hdfs-demo/demo-001.txt
+13 2 134217728

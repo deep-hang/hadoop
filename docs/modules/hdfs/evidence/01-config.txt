@@ -1,0 +1,86 @@
+$ hdfs getconf -confKey fs.defaultFS
+hdfs://master:9000
+
+$ hdfs getconf -confKey dfs.namenode.name.dir
+/var/lib/hadoop/hdfs/namenode
+
+$ hdfs getconf -confKey dfs.datanode.data.dir
+/var/lib/hadoop/hdfs/datanode
+
+$ hdfs getconf -confKey dfs.replication
+2
+
+$ hdfs getconf -confKey dfs.blocksize
+134217728
+
+$ cat /opt/hadoop/etc/hadoop/core-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  3 号模块：HDFS 全局配置（core-site.xml）
+  由 2 号按文件挂载到 master、worker1、worker2 的 /opt/hadoop/etc/hadoop/core-site.xml。
+  端点取自 .development 的公共接口：HDFS_URI=hdfs://master:9000。
+-->
+<configuration>
+  <!-- 默认文件系统。容器网络内通过 master 这个服务名解析到 NameNode，端口为契约固定的 9000。 -->
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://master:9000</value>
+  </property>
+
+  <!--
+    Hadoop 临时目录。默认值在容器的 /tmp 下，容器重建即丢失；
+    改到持久卷内的路径，使 NameNode/DataNode 的临时文件也跟随卷保留。
+  -->
+  <property>
+    <name>hadoop.tmp.dir</name>
+    <value>/var/lib/hadoop/tmp</value>
+  </property>
+
+  <!-- 读写 HDFS 的缓冲区大小，官方集群配置建议 128 KB（默认 4 KB）。 -->
+  <property>
+    <name>io.file.buffer.size</name>
+    <value>131072</value>
+  </property>
+</configuration>
+
+$ cat /opt/hadoop/etc/hadoop/hdfs-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  3 号模块：HDFS 服务配置（hdfs-site.xml）
+  由 2 号按文件挂载到 master、worker1、worker2 的 /opt/hadoop/etc/hadoop/hdfs-site.xml。
+  name.dir / data.dir 必须与 .development 的 HDFS_NAMENODE_DIR、HDFS_DATANODE_DIR 完全一致：
+  scripts/hadoop-node.sh 用 hdfs getconf -confKey 读取这两项并与环境变量比对，不一致直接退出 1。
+-->
+<configuration>
+  <!-- NameNode 元数据目录（fsimage、edits）。落在持久卷 /var/lib/hadoop 内，重启不丢文件。 -->
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>/var/lib/hadoop/hdfs/namenode</value>
+  </property>
+
+  <!-- DataNode 数据块目录。落在持久卷内，容器重建后块文件仍在，无需重新上传。 -->
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>/var/lib/hadoop/hdfs/datanode</value>
+  </property>
+
+  <!-- 两个 Worker 的实验副本数：每个块存 2 份，分别落在 worker1、worker2。 -->
+  <property>
+    <name>dfs.replication</name>
+    <value>2</value>
+  </property>
+
+  <!-- NameNode 退出安全模式的等待时间（毫秒），设 0 表示报块完成即离开安全模式，避免演示时白等 30 秒。 -->
+  <property>
+    <name>dfs.namenode.safemode.extension</name>
+    <value>0</value>
+  </property>
+
+  <!-- NameNode Web UI 监听所有网卡，便于 2 号把宿主机 9870 映射到 master 后访问。 -->
+  <property>
+    <name>dfs.namenode.http-address</name>
+    <value>0.0.0.0:9870</value>
+  </property>
+</configuration>
