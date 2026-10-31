@@ -1,0 +1,64 @@
+$ hdfs dfsadmin -report
+Configured Capacity: 2162202353664 (1.97 TB)
+Present Capacity: 2045550444544 (1.86 TB)
+DFS Remaining: 2045550297088 (1.86 TB)
+DFS Used: 147456 (144 KB)
+DFS Used%: 0.00%
+Replicated Blocks:
+	Under replicated blocks: 0
+	Blocks with corrupt replicas: 0
+	Missing blocks: 0
+	Missing blocks (with replication factor 1): 0
+	Low redundancy blocks with highest priority to recover: 0
+	Pending deletion blocks: 0
+Erasure Coded Block Groups: 
+	Low redundancy block groups: 0
+	Block groups with corrupt internal blocks: 0
+	Missing block groups: 0
+	Low redundancy blocks with highest priority to recover: 0
+	Pending deletion blocks: 0
+
+-------------------------------------------------
+Live datanodes (2):
+
+Name: 172.19.0.2:9866 (hadoop-distributed-recovery-worker1-1.hadoop-distributed-recovery_hadoop)
+Hostname: worker1
+Decommission Status : Normal
+Configured Capacity: 1081101176832 (1006.85 GB)
+DFS Used: 73728 (72 KB)
+Non DFS Used: 3333599232 (3.10 GB)
+DFS Remaining: 1022775148544 (952.53 GB)
+DFS Used%: 0.00%
+DFS Remaining%: 94.60%
+Configured Cache Capacity: 0 (0 B)
+Cache Used: 0 (0 B)
+Cache Remaining: 0 (0 B)
+Cache Used%: 100.00%
+Cache Remaining%: 0.00%
+Xceivers: 0
+Last contact: Sat Oct 31 12:55:33 UTC 2026
+Last Block Report: Sat Oct 31 12:54:54 UTC 2026
+Num of Blocks: 4
+
+
+Name: 172.19.0.3:9866 (hadoop-distributed-recovery-worker2-1.hadoop-distributed-recovery_hadoop)
+Hostname: worker2
+Decommission Status : Normal
+Configured Capacity: 1081101176832 (1006.85 GB)
+DFS Used: 73728 (72 KB)
+Non DFS Used: 3333599232 (3.10 GB)
+DFS Remaining: 1022775148544 (952.53 GB)
+DFS Used%: 0.00%
+DFS Remaining%: 94.60%
+Configured Cache Capacity: 0 (0 B)
+Cache Used: 0 (0 B)
+Cache Remaining: 0 (0 B)
+Cache Used%: 100.00%
+Cache Remaining%: 0.00%
+Xceivers: 0
+Last contact: Sat Oct 31 12:55:33 UTC 2026
+Last Block Report: Sat Oct 31 12:54:54 UTC 2026
+Num of Blocks: 4
+
+
+[exit=0]

@@ -1,0 +1,10 @@
+$ bash /workspace/tests/hdfs/check-persistence.sh verify
+[hdfs] 重启前：
+    SHA256=fd5a07e96c6b83e043f24422ed5c1bf35b5f042b0ba8a3a2a760e345dd862d3f
+    BLOCKS=BP-1502765186-172.19.0.2-1793359852708:blk_1073741843_1019
+[hdfs] 重启后：
+    SHA256=fd5a07e96c6b83e043f24422ed5c1bf35b5f042b0ba8a3a2a760e345dd862d3f
+    BLOCKS=BP-1502765186-172.19.0.2-1793359852708:blk_1073741843_1019
+[hdfs] PASS: 重启后文件仍可读，内容与块 ID 均未变化（未重新格式化）
+HDFS_PERSISTENCE_PASS
+[exit=0]

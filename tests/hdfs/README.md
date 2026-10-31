@@ -92,7 +92,7 @@ HDFS_TEST_PASS
 | `check-multiblock.sh 140` | 切成 2 块，每块 2 副本，PASS | 2026-10-26 | 本地模拟 hdfs |
 | 三节点真实集群首轮复验（2 号执行） | 文件读写、双副本、容器重建后数据保留均通过；但 `check-blocks.sh` 把「缺失块/欠副本/损坏块」误报为"未包含"并跳过 | 2026-10-29 | 见下方 5.1 |
 | 修复后回归（真实 fsck 输出格式：行首空格 + 百分比） | 4/4 PASS：正常通过、CORRUPT 失败、字段全缺失时失败、`run-all` 通过 | 2026-10-29 | 本地模拟 hdfs |
-| **三节点真实集群复验（修复版）** | **待 2 号复跑** | | |
+| **三节点真实集群复验（修复版，3 号本机执行）** | **`run-all` 四项全过 → `HDFS_TEST_PASS`；重启后 `HDFS_PERSISTENCE_PASS`；`fsck` 每块两份副本落在两个 worker，缺块/欠副本/损坏均为 0** | 2026-10-31 | 见 [实测记录](../../docs/modules/hdfs/results.md) |
 
 本地验证方式：用 `D:\Git\usr\bin` 下的 coreutils 配一个模拟 `hdfs`（只实现 `getconf` / `dfsadmin -report` / `dfs` / `fsck`），喂真实的 dfsadmin、fsck 输出格式，让脚本原样执行。它证明的是**解析与判定逻辑**正确，不能替代真实集群证据——真实集群必须由 3 号在 master 内重跑并贴原始输出。模拟 harness 放在 `runtime/`（已被忽略），不进仓库。
 

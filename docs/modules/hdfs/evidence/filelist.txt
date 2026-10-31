@@ -1,0 +1,13 @@
+证据文件清单（文件名 字节数）
+00-meta.txt                       509
+01-config.txt                    3085
+02-datanodes.txt                 1893
+02-safemode.txt                    56
+03-readwrite.txt                  557
+04-fsck.txt                      1769
+05-run-all.txt                   3951
+06-persistence-record.txt         644
+07-datanodes-after.txt           1884
+07-safemode-after.txt              56
+08-persistence-verify.txt         513
+09-cat-after.txt                   76

@@ -1,0 +1,3 @@
+$ hdfs dfsadmin -safemode get
+Safe mode is OFF
+[exit=0]
