@@ -99,3 +99,34 @@ git merge origin/main
 ~~~
 
 有冲突时联系相关负责人解决，重新测试后 git push。此过程保留自己的功能分支；后续继续开发仍用 feat/wordcount，不用重复 git switch -c。更多说明见 [协作规则](../../contributing.md)。
+
+<a id="status"></a>
+## 实现状态与配套文档
+
+当前进度：**阶段一与阶段二均已完成**。代码、三个脚本、测试用例、文档已提交到 feat/wordcount；
+真实三节点 HDFS / YARN 上的 build / run / verify 已跑通，双 Worker 的任务分布证据已取得，
+结果与 Hadoop 自带 wordcount 示例逐行一致。实测记录见 [test-results.md](test-results.md)。
+
+| 已完成项 | 结果 |
+| --- | --- |
+| 编译 | `BUILD PASS` |
+| 固定样例 | `VERIFY PASS`：hadoop 2、hello 2、world 1 |
+| 边界集（大小写、标点、空行、中文、纯数字） | `VERIFY PASS`：5 个词 |
+| 大数据集 5 × 2000 | `VERIFY PASS`：12 个词、41755 次出现，用 shell 独立统计交叉验证一致 |
+| 真实 YARN 作业 | `application_1793364628657_0002`，5 个 Map + 2 个 Reduce |
+| 双 Worker 参与 | worker1 承担 Map 3 个 + Reduce 1 个，worker2 承担 Map 2 个 + Reduce 1 个 |
+| 失败用例 | 5 项全部按预期返回非零，且不删除已有数据 |
+| 与自带示例对照 | `diff` 逐行完全一致 |
+
+| 文档 | 内容 |
+| --- | --- |
+| [implementation.md](implementation.md) | 实例设计与实现说明：输入数据设计、分词规则、一条数据走完全程、四个类的职责、为什么用 Combiner、为什么 2 个 Reduce、退出码与安全设计 |
+| [test-results.md](test-results.md) | 实际执行过的测试与结果；未执行的项标“待执行”，不预填通过 |
+| [demo-script.md](demo-script.md) | PPT 结构（封面 + 12 页正文）、视频录制顺序、可直接照念的讲解稿、截图清单 |
+| [apps/wordcount/README.md](../../../apps/wordcount/README.md) | 实际操作入口：分词规则、三个脚本用法、完整演示命令 |
+| [tests/wordcount/README.md](../../../tests/wordcount/README.md) | 测试用例清单、边界输入与预期、失败场景 |
+
+环境情况：开发机已完成公共环境第 1—8 步（Docker Desktop 4.97.0、WSL2 3.0.3、镜像 `hadoop-base:v0.1`），
+三节点集群（master 与 worker1、worker2）可正常启停，上述结果均在该环境中实测得出。
+
+未完成项：本段讲解视频尚未录制；PPT 已完成，结构与讲解词见 [demo-script.md](demo-script.md)。
